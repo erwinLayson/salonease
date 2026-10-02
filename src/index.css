@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+/*
+ * Salonease root design tokens (official brand palette).
+ * Emitted onto :root by Tailwind's @theme.
+ */
+@theme {
+  /* Brand */
+  --color-primary: #C95F78; /* Dusty Rose — accent fills, borders, icons */
+  --color-primary-dark: #A94761; /* Deep Rose — interactive surfaces + brand text */
+  --color-primary-light: #E8A0AF; /* Soft Blush — subtle highlights/badges */
+  --color-primary-press: #8E3B50; /* Deepened Deep Rose — hover/pressed (AA on white text) */
+
+  /* Neutrals */
+  --color-charcoal: #242326; /* Headings, nav, strong text */
+  --color-text: #3A383B; /* Body text */
+  --color-muted: #6E6B6F; /* Tertiary text — 5.1:1 on surface */
+  --color-background: #FCFAF8; /* Warm White — page background */
+  --color-surface: #FFFFFF; /* Cards, forms, tables, overlays */
+  --color-border: #E5E1E2; /* Borders, separators, input outlines */
+
+  /* Semantic (kept separate from the brand palette) */
+  --color-success: #15803d;
+  --color-success-bg: #ecfdf5;
+  --color-success-line: #a7f3d0;
+  --color-warning: #92400e;
+  --color-warning-bg: #fffbeb;
+  --color-warning-line: #fde68a;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-danger-line: #fecaca;
+  --color-info: #1d4ed8;
+  --color-info-bg: #eff6ff;
+  --color-info-line: #bfdbfe;
+
+  /* Elevation */
+  --shadow-card:
+    0 1px 2px 0 rgb(0 0 0 / 0.04),
+    0 1px 3px 0 rgb(0 0 0 / 0.06);
+  --shadow-lift:
+    0 4px 6px -1px rgb(0 0 0 / 0.08),
+    0 2px 4px -2px rgb(0 0 0 / 0.06);
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* Keep anchor targets clear of the sticky navbar. */
+  scroll-padding-top: 5rem;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Consistent, visible keyboard focus everywhere (AA: indicator >= 3:1). */
+:focus-visible {
+  outline: 2px solid var(--color-primary-dark);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--color-primary-light);
+  color: var(--color-charcoal);
+}
+
+/* "Meet the team" marquee: the track holds two identical copies of the
+   list, so translating -50% loops seamlessly back to copy one. */
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.team-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+/* Pause the loop while the team strip is hovered. */
+.team-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .team-marquee {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
