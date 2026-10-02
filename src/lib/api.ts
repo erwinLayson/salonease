@@ -2,10 +2,12 @@ import axios from "axios";
 import { toast } from "./toast";
 import { getEnv } from "./env";
 
-// The SPA and API share an origin: Vite proxies /api to the server in
-// development (target read from VITE_API_URL in .env — see vite.config.ts),
-// and production serves both from one origin. Keeping the baseURL relative
-// avoids CORS and cross-origin cookie issues with the httpOnly session cookie.
+// In development the SPA and API share an origin: Vite proxies /api to the
+// server (target read from VITE_API_URL in .env — see vite.config.ts). In
+// production VITE_API_URL points at the deployed API, which may be a different
+// site; `withCredentials: true` sends/receives the httpOnly session cookie
+// there, and the server sets it `SameSite=None; Secure` (see
+// server/src/config/auth.ts) so cross-site requests keep the session.
 const apiUse = getEnv("VITE_API_URL");
 
 export const api = axios.create({ baseURL: apiUse, withCredentials: true });
