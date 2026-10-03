@@ -5,7 +5,6 @@ import { toast } from "../../lib/toast";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { Field } from "../ui/Field";
 import { Modal } from "../ui/Modal";
-import { Select } from "../ui/Select";
 import { StatusBadge } from "../ui/StatusBadge";
 import { RescheduleForm } from "./RescheduleForm";
 
@@ -13,13 +12,8 @@ import type { AppointmentDetail, OwnerStaff } from "../../types";
 import { formatDateTime } from "../../lib/utils";
 
 interface BlockTimeModalProps {
-    /** Pre-selected staff for a leave; null starts on a whole-salon closure. */
-    staffId: number | null;
-    staffName?: string;
     date: string;
     staff: OwnerStaff[];
-    /** Show the staff picker so the owner can choose who the block applies to. */
-    allowStaffSelect?: boolean;
     onClose: () => void;
     /** An appointment was cancelled/rescheduled while resolving conflicts. */
     onChanged: () => void | Promise<void>;
@@ -28,18 +22,13 @@ interface BlockTimeModalProps {
 }
 
 /**
- * Creates a leave/closure block for one staff member's day. If active
- * appointments overlap the block, switches to a conflict step that lists
- * them with reschedule/cancel actions — or "Block anyway" (force).
+ * Creates a whole-salon closure block (leave comes from the staff request
+ * workflow, not from here). If active appointments overlap the block,
+ * switches to a conflict step that lists them with reschedule/cancel
+ * actions — or "Block anyway" (force).
  */
 export function BlockTimeModal(props: BlockTimeModalProps) {
-    const selectMode = props.allowStaffSelect === true;
     const [step, setStep] = useState<"form" | "conflicts">("form");
-    const [blockType, setBlockType] = useState<"leave" | "closure">("leave");
-    // Staff picker value; "" means a whole-salon closure.
-    const [target, setTarget] = useState<string>(
-        props.staffId != null ? String(props.staffId) : ""
-    );
     const [date, setDate] = useState(props.date);
     const [fullDay, setFullDay] = useState(true);
     const [startTime, setStartTime] = useState("09:00");
@@ -55,19 +44,7 @@ export function BlockTimeModal(props: BlockTimeModalProps) {
     const startAt = `${date}T${fullDay ? "00:00" : startTime}:00`;
     const endAt = `${date}T${fullDay ? "23:59" : endTime}:00`;
 
-    // In select mode the chosen staff member determines leave vs closure.
-    const effectiveType: "leave" | "closure" = selectMode
-        ? target === ""
-            ? "closure"
-            : "leave"
-        : blockType;
-    const effectiveStaffId: number | null = selectMode
-        ? target === ""
-            ? null
-            : Number(target)
-        : props.staffId;
-
-    /** POSTs the exception; a 409 moves to the conflict step. */
+    /** POSTs the closure; a 409 moves to the conflict step. */
     const submit = async (force: boolean): Promise<boolean> => {
         setFormError(null);
         if (!fullDay && endTime <= startTime) {
@@ -80,8 +57,7 @@ export function BlockTimeModal(props: BlockTimeModalProps) {
             await api.post(
                 "/owner/schedule-exceptions",
                 {
-                    ...(effectiveType === "leave" ? { staffId: effectiveStaffId } : {}),
-                    type: effectiveType,
+                    type: "closure",
                     startAt,
                     endAt,
                     reason: reason.trim() || null,
@@ -132,7 +108,7 @@ export function BlockTimeModal(props: BlockTimeModalProps) {
         ? `Reschedule ${rescheduleFor.reference}`
         : step === "conflicts"
           ? "Resolve conflicts"
-          : "Block time / add leave";
+          : "Block time (closure)";
 
     return (
         <Modal title={title} onClose={props.onClose} wide>
@@ -149,37 +125,13 @@ export function BlockTimeModal(props: BlockTimeModalProps) {
                 />
             ) : step === "form" ? (
                 <div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        {selectMode ? (
-                            <Select
-                                label="Applies to"
-                                value={target}
-                                onChange={setTarget}
-                                options={[
-                                    { value: "", label: "Whole salon (closure)" },
-                                    ...props.staff.map((member) => ({
-                                        value: String(member.id),
-                                        label: `${member.first_name} ${member.last_name} — leave`,
-                                    })),
-                                ]}
-                            />
-                        ) : (
-                            <Select
-                                label="Block type"
-                                value={blockType}
-                                onChange={(value) =>
-                                    setBlockType(value as "leave" | "closure")
-                                }
-                                options={[
-                                    {
-                                        value: "leave",
-                                        label: `Leave — ${props.staffName ?? "staff"}`,
-                                    },
-                                    { value: "closure", label: "Closure — whole salon" },
-                                ]}
-                            />
-                        )}
-                        <Field label="Date" value={date} onChange={setDate} type="date" />
+                    <div className="sm:max-w-xs">
+                        <Field
+                            label="Date"
+                            value={date}
+                            onChange={setDate}
+                            type="date"
+                        />
                     </div>
 
                     <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
@@ -209,15 +161,14 @@ export function BlockTimeModal(props: BlockTimeModalProps) {
                             label="Reason (optional)"
                             value={reason}
                             onChange={setReason}
-                            placeholder="e.g. Training, family matter, holiday"
+                            placeholder="e.g. Holiday, private event, power outage"
                         />
                     </div>
 
-                    {effectiveType === "closure" && (
-                        <p className="mt-2 text-xs text-muted">
-                            A closure blocks every staff member for the selected time.
-                        </p>
-                    )}
+                    <p className="mt-2 text-xs text-muted">
+                        A closure blocks every staff member for the selected time. Staff
+                        leave is requested by them and approved here instead.
+                    </p>
 
                     {formError && (
                         <p

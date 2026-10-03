@@ -70,16 +70,14 @@ export interface ScheduleDayEntry {
 /**
  * Opened by clicking a date on the schedule calendar. Shows every staff
  * member's hours, leaves and appointments for that day, with an expandable
- * "View details" panel, block/leave creation, and block removal.
+ * "View details" panel, closure creation, and block removal.
  */
 export function ScheduleDayModal(props: {
     date: string;
     staff: OwnerStaff[];
     entries: ScheduleDayEntry[];
-    /** Owner manages blocks/leave; staff only view and take actions. */
+    /** Owner manages closures; staff only view and take actions. */
     scope?: "owner" | "staff";
-    /** Pre-selected staff for the block form (e.g. the page's staff filter). */
-    defaultStaffId?: number | null;
     onClose: () => void;
     /** Schedule data changed — parent reloads the calendar. */
     onChanged: () => void | Promise<void>;
@@ -157,7 +155,7 @@ export function ScheduleDayModal(props: {
                         onClick={() => setBlockOpen(true)}
                         className="min-h-11 rounded-lg bg-primary-dark px-4 text-sm font-medium text-white transition-colors hover:bg-primary-press"
                     >
-                        + Block time / add leave
+                        + Block time (closure)
                     </button>
                 )}
             </div>
@@ -376,10 +374,8 @@ export function ScheduleDayModal(props: {
 
             {blockOpen && (
                 <BlockTimeModal
-                    staffId={props.defaultStaffId ?? null}
                     date={props.date}
                     staff={props.staff}
-                    allowStaffSelect
                     onClose={() => setBlockOpen(false)}
                     onChanged={reload}
                     onCreated={() => {

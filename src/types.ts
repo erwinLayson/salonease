@@ -20,10 +20,15 @@ export interface StaffOption {
     schedule?: StaffScheduleSlot[];
 }
 
+/** Day-level availability for one staff member. */
+export type SlotAvailabilityStatus = "available" | "busy" | "unavailable";
+
 export interface StaffSlots {
     staffId: number;
     staffName: string;
     slots: string[];
+    status: SlotAvailabilityStatus;
+    reason: string | null;
 }
 
 /** Per-staff open-date counts for one month (calendar markers). */
@@ -45,6 +50,16 @@ export interface AvailabilityResponse {
     durationMinutes: number;
     bufferMinutes: number;
     staff: StaffSlots[];
+}
+
+/** Eligible staff for a service (owner walk-in flow), with day status. */
+export interface StaffForService {
+    staffId: number;
+    staffName: string;
+    position: string | null;
+    schedule: StaffScheduleSlot[];
+    status: SlotAvailabilityStatus;
+    reason: string | null;
 }
 
 export interface AppointmentView {
@@ -213,6 +228,41 @@ export interface ScheduleView {
     from: string;
     to: string;
     staff: ScheduleStaff[];
+}
+
+// --- Leave requests (staff request, owner decides) ---
+
+export type LeaveRequestStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+/** GET /staff/leave-requests and GET /owner/leave-requests row. */
+export interface LeaveRequest {
+    id: number;
+    staffId: number;
+    staffName: string;
+    /** `YYYY-MM-DD`, inclusive. */
+    startDate: string;
+    /** `YYYY-MM-DD`, inclusive. */
+    endDate: string;
+    /** Inclusive day count. */
+    days: number;
+    reason: string | null;
+    status: LeaveRequestStatus;
+    decisionNote: string | null;
+    decidedAt: string | null;
+    requestedAt: string;
+}
+
+/**
+ * GET /staff/leave-requests/coverage — whose leave (pending or approved)
+ * overlaps the queried range. Names, dates and status only: never reasons.
+ */
+export interface LeaveCoverage {
+    id: number;
+    staffId: number;
+    staffName: string;
+    startDate: string;
+    endDate: string;
+    status: LeaveRequestStatus;
 }
 
 // --- Landing page ---

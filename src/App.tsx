@@ -141,10 +141,10 @@ function App() {
                                 path="/staff/transactions"
                                 element={<StaffTransactionsPage />}
                             />
-                            {/* The staff schedule merged into My Appointments. */}
+                            {/* Staff schedule: calendar + leave requests. */}
                             <Route
                                 path="/staff/schedule"
-                                element={<Navigate to="/staff/appointments" replace />}
+                                element={<SchedulePage scope="staff" />}
                             />
                         </Route>
 

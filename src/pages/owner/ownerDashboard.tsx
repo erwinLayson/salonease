@@ -11,7 +11,8 @@ import { Field } from "../../components/ui/Field";
 import { Select } from "../../components/ui/Select";
 
 // Shared dashboard components
-import { ManualBookingForm } from "../../components/owner/ManualBookingForm";
+import { LeaveRequestsSection } from "../../components/owner/LeaveRequestsSection";
+import { WalkInBookingWizard } from "../../components/owner/WalkInBookingWizard";
 import { NotesForm } from "../../components/owner/NotesForm";
 import { RescheduleForm } from "../../components/owner/RescheduleForm";
 import { StatusAction } from "../../components/owner/StatusAction";
@@ -248,9 +249,8 @@ export default function OwnerDashboard() {
                     onClose={() => setShowNew(false)}
                     wide
                 >
-                    <ManualBookingForm
+                    <WalkInBookingWizard
                         services={services}
-                        staff={staff}
                         onDone={async (message) => {
                             setShowNew(false);
                             toast.success(message);
@@ -503,6 +503,8 @@ export default function OwnerDashboard() {
                     ))}
                 </ul>
             </Card>
+
+            <LeaveRequestsSection />
         </div>
     );
 }

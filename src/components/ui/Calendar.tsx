@@ -93,6 +93,8 @@ export function Calendar(props: {
      * breakdown, e.g. how many staff are working/on leave on each day.
      */
     statusBreakdown?: Record<string, Partial<Record<CalendarDayStatus, number>>> | null;
+    /** Render the status legend below the grid (default true). */
+    showLegend?: boolean;
 }) {
     const year = Number(props.month.slice(0, 4));
     const monthIndex = Number(props.month.slice(5, 7)) - 1;
@@ -298,7 +300,7 @@ export function Calendar(props: {
                 </p>
             )}
 
-            {hasStatus && (
+            {hasStatus && props.showLegend !== false && (
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                     {monthHasStatus ? (
                         STATUS_ORDER.map((kind) => (

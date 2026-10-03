@@ -51,6 +51,7 @@ export function roleNavItems(role: Role): SidebarItem[] {
                   label: "My Appointments",
                   icon: <CalendarIcon />,
               },
+              { href: "/staff/schedule", label: "Schedule", icon: <ClockIcon /> },
               {
                   href: "/staff/transactions",
                   label: "Transactions",

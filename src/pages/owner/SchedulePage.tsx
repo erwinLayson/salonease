@@ -11,6 +11,8 @@ import {
     ScheduleDayModal,
     type ScheduleDayEntry,
 } from "../../components/owner/ScheduleDayModal";
+import { LeavePanel } from "../../components/staff/LeavePanel";
+import { RequestLeaveModal } from "../../components/staff/RequestLeaveModal";
 
 // Types
 import type { OwnerStaff, ScheduleDay, ScheduleView } from "../../types";
@@ -38,9 +40,9 @@ const STATUS_RANK: Record<CalendarDayStatus, number> = {
 };
 
 /**
- * Monthly schedule calendar for owners and staff. Selecting a date
- * shows that day's appointments in the side panel; owners can open
- * day management to block time or add leave for a staff member.
+ * Monthly schedule calendar for owners and staff. Owners select a date to
+ * see and manage that day's appointments; staff select a date to review
+ * their leave for it and request time off from the side panel.
  */
 export default function SchedulePage(props: { scope: "owner" | "staff" }) {
     const today = dateInDays(0);
@@ -54,6 +56,7 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
     const [loading, setLoading] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [dayOpen, setDayOpen] = useState(false);
+    const [leaveOpen, setLeaveOpen] = useState(false);
 
     // Staff directory for the day-management modal; the staff portal
     // is always scoped server-side.
@@ -97,15 +100,18 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
 
     // The selected date's own view, so the side panel reacts to the
     // selection immediately — even for dates outside the viewed month.
+    // Only the owner's panel lists appointments; the staff panel shows
+    // leave instead, so staff skip this request entirely.
     useEffect(() => {
+        if (props.scope !== "owner") {
+            return;
+        }
         let stale = false;
         const load = async () => {
             setDayLoading(true);
             setDayError(false);
             try {
-                const path =
-                    props.scope === "owner" ? "/owner/schedule" : "/staff/schedule";
-                const res = await api.get<{ data: ScheduleView }>(path, {
+                const res = await api.get<{ data: ScheduleView }>("/owner/schedule", {
                     params: { view: "day", date },
                 });
                 if (!stale) {
@@ -139,7 +145,8 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
         for (const member of schedule?.staff ?? []) {
             for (const day of member.days) {
                 // Only confirmed/completed appointments count towards
-                // the calendar badges — the same ones the side panel shows.
+                // the owner calendar badges — the same ones the side
+                // panel shows.
                 nextCounts[day.date] =
                     (nextCounts[day.date] ?? 0) +
                     day.appointments.filter((appointment) =>
@@ -184,13 +191,15 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
 
     return (
         <div className="grid gap-6">
-            <header>
-                <h1 className="text-xl font-semibold tracking-tight">Schedule</h1>
-                <p className="mt-1 text-sm text-muted">
-                    {props.scope === "owner"
-                        ? "Click a date to see that day's schedule."
-                        : "Browse the calendar to see your working hours, leaves and appointments."}
-                </p>
+            <header className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h1 className="text-xl font-semibold tracking-tight">Schedule</h1>
+                    <p className="mt-1 text-sm text-muted">
+                        {props.scope === "owner"
+                            ? "Click a date to see that day's schedule."
+                            : "Browse the calendar to see your working hours, days off and approved leave."}
+                    </p>
+                </div>
             </header>
 
             <Card title="Calendar">
@@ -203,22 +212,28 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
                         onChange={setDate}
                         month={month}
                         onMonthChange={setMonth}
-                        marks={counts}
+                        // Appointment badges are an owner thing — the staff
+                        // panel lists leave instead of appointments.
+                        marks={props.scope === "owner" ? counts : undefined}
                         status={statuses}
                         statusBreakdown={breakdown}
                     />
 
-                    <DailySchedule
-                        date={date}
-                        view={dayView}
-                        loading={dayLoading}
-                        error={dayError}
-                        onManage={
-                            props.scope === "owner"
-                                ? () => setDayOpen(true)
-                                : undefined
-                        }
-                    />
+                    {props.scope === "owner" ? (
+                        <DailySchedule
+                            date={date}
+                            view={dayView}
+                            loading={dayLoading}
+                            error={dayError}
+                            onManage={() => setDayOpen(true)}
+                        />
+                    ) : (
+                        <LeavePanel
+                            date={date}
+                            refreshKey={refreshKey}
+                            onRequest={() => setLeaveOpen(true)}
+                        />
+                    )}
                 </div>
 
                 {loading && (
@@ -230,6 +245,14 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
                 <div className="py-10 text-center text-sm text-muted">
                     No staff to show.
                 </div>
+            )}
+
+            {leaveOpen && (
+                <RequestLeaveModal
+                    defaultStart={date}
+                    onClose={() => setLeaveOpen(false)}
+                    onCreated={() => setRefreshKey((key) => key + 1)}
+                />
             )}
 
             {dayOpen && (
