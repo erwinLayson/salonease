@@ -1,4 +1,5 @@
 import { MenuIcon } from "../ui/icons";
+import logo from "../../assets/company-logo.png";
 
 /**
  * Compact top bar for small screens: menu toggle + brand.
@@ -21,8 +22,8 @@ export function AdminHeader(props: {
                 <MenuIcon />
             </button>
             <span className="flex flex-1 items-center justify-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-xs font-bold text-white shadow-sm">
-                    R
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                    <img src={logo} alt="" className="h-full w-full object-cover" />
                 </span>
                 <span className="text-sm font-semibold tracking-tight text-charcoal">
                     Raheem Make Up Studio

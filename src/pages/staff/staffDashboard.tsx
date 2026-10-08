@@ -174,12 +174,6 @@ export default function StaffDashboard() {
         return null;
     }, [schedule, date]);
 
-    const goToToday = () => {
-        const today = dateInDays(0);
-        setDate(today);
-        setMonth(today.slice(0, 7));
-    };
-
     return (
         <div className="grid gap-6">
             <header>
@@ -190,28 +184,16 @@ export default function StaffDashboard() {
             </header>
 
             <Card title="Appointment calendar">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                    <Calendar
-                        value={date}
-                        onChange={setDate}
-                        month={month}
-                        onMonthChange={setMonth}
-                        marks={monthCounts}
-                        status={dayStatuses}
-                    />
-                    <div className="flex flex-col items-start gap-2">
-                        <button
-                            type="button"
-                            onClick={goToToday}
-                            className="min-h-11 rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-charcoal/5"
-                        >
-                            Today
-                        </button>
-                        <p className="text-xs text-muted">
-                            Badged days have bookings — tap one to see them.
-                        </p>
-                    </div>
-                </div>
+                {/* The calendar fills the full width of the card; the
+                    previous right-hand "Today" / helper column is gone. */}
+                <Calendar
+                    value={date}
+                    onChange={setDate}
+                    month={month}
+                    onMonthChange={setMonth}
+                    marks={monthCounts}
+                    status={dayStatuses}
+                />
             </Card>
 
             <Card title={`Appointments (${appointments.length})`}>

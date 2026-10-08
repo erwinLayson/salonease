@@ -1,6 +1,7 @@
 import { roleNavItems, type SidebarItem } from "../../constant/nav";
 import type { SessionUser } from "../../types";
 import { LogoutIcon } from "../ui/icons";
+import logo from "../../assets/company-logo.png";
 
 const cleanPath = (href: string): string =>
     href.split("?")[0].replace(/\/+$/, "") || "/";
@@ -33,8 +34,8 @@ export function Sidebar(props: {
     return (
         <div className="flex h-full flex-col border-r border-border bg-surface">
             <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm">
-                    R
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                    <img src={logo} alt="" className="h-full w-full object-cover" />
                 </span>
                 <span className="text-sm font-semibold tracking-tight">
                     Raheem Make Up Studio{" "}

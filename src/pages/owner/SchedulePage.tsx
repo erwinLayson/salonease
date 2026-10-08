@@ -12,6 +12,7 @@ import {
     type ScheduleDayEntry,
 } from "../../components/owner/ScheduleDayModal";
 import { LeavePanel } from "../../components/staff/LeavePanel";
+import { StaffLeaveRequests } from "../../components/staff/StaffLeaveRequests";
 import { RequestLeaveModal } from "../../components/staff/RequestLeaveModal";
 
 // Types
@@ -203,10 +204,17 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
             </header>
 
             <Card title="Calendar">
-                {/* `items-start` keeps the two panels at their own
-                    natural heights — the calendar must not stretch to
-                    match a tall daily schedule. */}
-                <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                {/* The calendar takes the larger share of the row, as in the
+                    reference layout. Owner panels (`DailySchedule`) stay at
+                    their own natural height (`items-start`) so a busy day
+                    never stretches the calendar; the staff leave panel
+                    stretches to match the calendar so its Request leave
+                    action sits at the bottom of a balanced row. */}
+                <div
+                    className={`grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] ${
+                        props.scope === "owner" ? "items-start" : "lg:items-stretch"
+                    }`}
+                >
                     <Calendar
                         value={date}
                         onChange={setDate}
@@ -240,6 +248,12 @@ export default function SchedulePage(props: { scope: "owner" | "staff" }) {
                     <p className="mt-4 text-center text-sm text-muted">Loading…</p>
                 )}
             </Card>
+
+            {/* Staff request history sits in its own full-width section
+                beneath the calendar + leave-schedule row. */}
+            {props.scope === "staff" && (
+                <StaffLeaveRequests refreshKey={refreshKey} />
+            )}
 
             {!loading && schedule && schedule.staff.length === 0 && (
                 <div className="py-10 text-center text-sm text-muted">

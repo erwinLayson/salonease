@@ -219,10 +219,33 @@ export default function BookingPage() {
             ? null
             : datesOnOrAfter(anyStaffDates, todayKey);
 
-    const allSlots =
+    // Slot times for a specific staff member on the selected date.
+    // When no staff is chosen yet, fall back to all open times for the
+    // service that day (the same set the calendar already shows for the
+    // current date).
+    const currentStaffIds = staffId !== null ? [staffId, null] : null;
+    const allIds = availability === null
+        ? []
+        : currentStaffIds !== null
+          ? currentStaffIds
+          : availability.staff.map((entry) => entry.staffId);
+    const staffSlots: string[] =
         availability === null
             ? []
-            : [...new Set(availability.staff.flatMap((entry) => entry.slots))].sort();
+            : allIds.reduce<string[]>((out, id) => {
+                  const entry = availability.staff.find((e) => e.staffId === id);
+                  if (!entry) {
+                      return out;
+                  }
+                  for (const slot of entry.slots) {
+                      if (!out.includes(slot)) {
+                          out.push(slot);
+                      }
+                  }
+                  return out;
+              }, [])
+                .sort();
+    const allSlots = staffSlots;
 
     const submit = async () => {
         if (!service || !slot) {
@@ -299,7 +322,7 @@ export default function BookingPage() {
         step === "slot" || step === "details" || step === "done";
 
     return (
-        <div className="flex h-svh w-full flex-col overflow-hidden bg-background">
+        <div className="flex min-h-svh w-full flex-col bg-background lg:h-svh lg:overflow-hidden">
             {/* Slim page bar — the site Navbar/Footer are intentionally omitted here. */}
             <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2 sm:px-6">
                 <a
@@ -325,10 +348,10 @@ export default function BookingPage() {
                 </a>
             </div>
 
-            <div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex-row">
+            <div className="flex w-full flex-1 flex-col lg:min-h-0 lg:flex-row lg:overflow-hidden">
                 {/* Sidebar: page heading + live booking summary */}
-                <aside className="w-full shrink-0 overflow-y-auto border-b border-border bg-surface px-4 py-6 sm:px-6 lg:w-80 lg:border-b-0 lg:border-r lg:px-6 lg:py-10 xl:w-96">
-                    <div>
+                <aside className="contents lg:flex lg:w-80 lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-border lg:bg-surface lg:px-6 lg:py-10 xl:w-96">
+                    <div className="border-b border-border bg-surface px-4 py-6 sm:px-6 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
                         <a
                             href="/"
                             className="inline-flex min-h-11 items-center text-xs text-muted underline decoration-border transition-colors hover:text-primary-dark"
@@ -344,14 +367,19 @@ export default function BookingPage() {
                         </p>
                     </div>
 
-                    <div className="mt-5">
-                        <Card title="Your booking">
+                    <div className="sticky top-0 z-20 border-b border-border bg-background px-4 py-3 sm:px-6 lg:static lg:mt-5 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
+                        <section className="rounded-2xl border border-border bg-surface p-3 shadow-card sm:p-4 lg:p-5">
+                            <div className="mb-2 flex items-center justify-between gap-3 border-b border-border pb-2 lg:mb-4 lg:pb-3">
+                                <h2 className="text-sm font-semibold tracking-tight lg:text-base">
+                                    Your booking
+                                </h2>
+                            </div>
                             {service === null ? (
                                 <p className="text-sm text-muted">
                                     Start by choosing a service.
                                 </p>
                             ) : (
-                                <dl className="space-y-1 text-sm">
+                                <dl className="space-y-0.5 text-sm lg:space-y-1">
                                     <Row
                                         label="Service"
                                         value={`${service.name} · ${service.durationMinutes} min`}
@@ -365,16 +393,16 @@ export default function BookingPage() {
                                     <Row label="Price" value={peso(service.price)} />
                                 </dl>
                             )}
-                            <p className="mt-3 text-xs text-muted">
+                            <p className="mt-2 hidden text-xs text-muted lg:mt-3 lg:block">
                                 You'll get a private link to manage or cancel this
                                 booking.
                             </p>
-                        </Card>
+                        </section>
                     </div>
                 </aside>
 
                 {/* Main: progress stepper + active step */}
-                <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto px-4 py-6 sm:px-6 lg:px-10 lg:py-10 xl:px-14">
+                <main className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:min-h-0 lg:overflow-y-auto lg:px-10 lg:py-10 xl:px-14">
                     {step !== "done" && (
                         <ol
                             className="mb-6 flex items-center text-xs sm:text-sm"
@@ -622,32 +650,41 @@ export default function BookingPage() {
                                             Other times available that day:
                                         </p>
                                         <div className="mt-2 flex flex-wrap gap-2">
-                                            {alternatives.map((time) => (
-                                                <button
-                                                    key={time}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSlot(time);
-                                                        setSlotError(false);
-                                                    }}
-                                                    aria-pressed={slot === time}
-                                                    className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                                        slot === time
-                                                            ? "border-primary-dark bg-primary-dark font-medium text-white"
-                                                            : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
-                                                    }`}
-                                                >
-                                                    {time}
-                                                </button>
-                                            ))}
+                                            {alternatives
+                                                .filter((time) => staffSlots.includes(time))
+                                                .map((time) => (
+                                                    <button
+                                                        key={time}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSlot(time);
+                                                            setSlotError(false);
+                                                        }}
+                                                        aria-pressed={slot === time}
+                                                        className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                                            slot === time
+                                                                ? "border-primary-dark bg-primary-dark font-medium text-white"
+                                                                : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
+                                                        }`}
+                                                    >
+                                                        {time}
+                                                    </button>
+                                                ))}
                                         </div>
+                                        {staffSlots.filter((time) => alternatives.includes(time)).length === 0 && (
+                                            <p className="mt-2 text-xs text-muted">
+                                                None of those times are available for the
+                                                selected staff.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
 
-                                {!loading && allSlots.length === 0 && (
+                                {!loading && staffSlots.length === 0 && (
                                     <p className="text-sm text-muted">
-                                        No times are available on this date. Try another
-                                        day.
+                                        {staffId !== null
+                                            ? `No times are available for this staff member on this date. Try another day.`
+                                            : `No times are available on this date. Try another day.`}
                                     </p>
                                 )}
 

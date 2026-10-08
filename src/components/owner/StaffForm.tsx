@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../../lib/api";
 import { Field } from "../../components/ui/Field";
+import { Select } from "../../components/ui/Select";
 
 import type { OwnerStaff } from "../../types";
 
@@ -12,6 +13,17 @@ interface StaffFormProps {
 }
 
 const MIN_PASSWORD_LENGTH = 8;
+
+const POSITIONS = [
+    "Hair Stylist",
+    "Makeup Artist",
+    "Nail Technician",
+    "Lash Technician",
+    "Brow Technician",
+    "Esthetician",
+    "Massage Therapist",
+    "Receptionist",
+] as const;
 
 export function StaffForm(props: StaffFormProps) {
     const editing = props.staff ?? null;
@@ -91,11 +103,21 @@ export function StaffForm(props: StaffFormProps) {
                     value={form.lastName}
                     onChange={(value) => set({ lastName: value })}
                 />
-                <Field
+                <Select
                     label="Position"
                     value={form.position}
                     onChange={(value) => set({ position: value })}
-                    placeholder="e.g. Senior Stylist"
+                    options={[
+                        { value: "", label: "Select position" },
+                        ...POSITIONS.map((position) => ({
+                            value: position,
+                            label: position,
+                        })),
+                        ...(form.position !== "" &&
+                        !POSITIONS.some((p) => p === form.position)
+                            ? [{ value: form.position, label: form.position }]
+                            : []),
+                    ]}
                 />
                 <Field
                     label="Phone"

@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, errorMessage } from "../../lib/api";
-import { toast } from "../../lib/toast";
+import { api } from "../../lib/api";
 
 // UI components
-import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { LeaveStatusBadge } from "../ui/LeaveStatusBadge";
 
 // Types
@@ -28,11 +26,12 @@ const formatDayHeader = (key: string): string => {
 };
 
 /**
- * The calendar's right-hand panel for the staff schedule: the selected
- * date's approved leave (or a clear empty state), a prominent request
- * action, and the staff member's own request history below. Pending
- * requests are listed but never colour the calendar — only the owner's
- * approval creates the blocking leave.
+ * The calendar's right-hand "Leave Schedule" panel for the staff schedule:
+ * the selected date's approved leave (or a clear empty state) and a
+ * prominent request action. Pending requests are mentioned as context but
+ * never colour the calendar — only the owner's approval creates the
+ * blocking leave. The member's request history lives in the full-width
+ * section below the calendar.
  */
 export function LeavePanel(props: {
     /** The calendar's selected date (`YYYY-MM-DD`). */
@@ -44,9 +43,6 @@ export function LeavePanel(props: {
 }) {
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [localKey, setLocalKey] = useState(0);
-    const [withdrawFor, setWithdrawFor] = useState<LeaveRequest | null>(null);
-    const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         let stale = false;
@@ -69,7 +65,7 @@ export function LeavePanel(props: {
         return () => {
             stale = true;
         };
-    }, [props.refreshKey, localKey]);
+    }, [props.refreshKey]);
 
     // The selected date's approved leave, plus any pending request covering
     // it (mentioned only as context — pending never blocks the schedule).
@@ -86,37 +82,16 @@ export function LeavePanel(props: {
         };
     }, [requests, props.date]);
 
-    const withdraw = async (): Promise<void> => {
-        if (!withdrawFor) {
-            return;
-        }
-        setBusy(true);
-        try {
-            await api.patch(
-                `/staff/leave-requests/${withdrawFor.id}/cancel`,
-                {},
-                { skipErrorToast: true }
-            );
-            toast.success("Request withdrawn.");
-            setWithdrawFor(null);
-            setLocalKey((key) => key + 1);
-        } catch (err) {
-            toast.error(errorMessage(err));
-        } finally {
-            setBusy(false);
-        }
-    };
-
     return (
         <section
-            className="rounded-xl border border-border bg-surface p-3 sm:p-4"
+            className="flex flex-col rounded-xl border border-border bg-surface p-3 sm:p-4"
             aria-live="polite"
         >
             <div className="mb-3">
                 <h3 className="text-base font-semibold tracking-tight">
                     {formatDayHeader(props.date)}
                 </h3>
-                <p className="text-xs text-muted">Leave</p>
+                <p className="text-xs text-muted">Leave Schedule</p>
             </div>
 
             {loading ? (
@@ -190,123 +165,17 @@ export function LeavePanel(props: {
                 </div>
             )}
 
-            <button
-                type="button"
-                onClick={props.onRequest}
-                className="mt-4 flex min-h-11 w-full items-center justify-center rounded-lg bg-primary-dark px-4 text-sm font-medium text-white transition-colors hover:bg-primary-press"
-            >
-                Request leave
-            </button>
-
-            <div className="mt-4 border-t border-border pt-3">
-                <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-semibold">Leave requests</h4>
-                    <span className="text-xs text-muted">{requests.length} total</span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                    Pending requests keep your schedule unchanged; approved leave
-                    blocks bookings for those dates.
-                </p>
-
-                {loading ? (
-                    <p className="py-6 text-center text-sm text-muted">Loading…</p>
-                ) : requests.length === 0 ? (
-                    <div className="py-6 text-center">
-                        <p className="text-sm font-medium">No leave requests yet.</p>
-                        <p className="mt-1 text-xs text-muted">
-                            Ask for time off and the owner will review it here.
-                        </p>
-                    </div>
-                ) : (
-                    // The list scrolls within its own area so a long history
-                    // does not push the calendar down the page.
-                    <ul className="mt-3 grid max-h-[24rem] gap-3 overflow-y-auto">
-                        {requests.map((request) => (
-                            <li
-                                key={request.id}
-                                className="rounded-xl border border-border p-4"
-                            >
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-sm font-semibold">
-                                        {formatDay(request.startDate)} –{" "}
-                                        {formatDay(request.endDate)}
-                                    </span>
-                                    <span className="text-xs text-muted">
-                                        {request.days} day{request.days === 1 ? "" : "s"}
-                                    </span>
-                                    <LeaveStatusBadge status={request.status} />
-                                    {request.status === "pending" && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setWithdrawFor(request)}
-                                            className="ml-auto min-h-11 rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-charcoal/5"
-                                        >
-                                            Withdraw
-                                        </button>
-                                    )}
-                                </div>
-
-                                {request.reason && (
-                                    <p className="mt-1 text-xs text-charcoal">
-                                        {request.reason}
-                                    </p>
-                                )}
-                                <p className="mt-1 text-xs text-muted">
-                                    Requested {formatDateTime(request.requestedAt)}
-                                </p>
-
-                                {request.status === "rejected" && request.decisionNote && (
-                                    <p className="mt-1 text-xs text-danger">
-                                        Rejected — {request.decisionNote}
-                                    </p>
-                                )}
-                                {request.status === "rejected" && !request.decisionNote && (
-                                    <p className="mt-1 text-xs text-danger">Rejected</p>
-                                )}
-                                {request.status === "approved" && (
-                                    <p className="mt-1 text-xs text-success">
-                                        Approved
-                                        {request.decidedAt
-                                            ? ` — ${formatDateTime(request.decidedAt)}`
-                                            : ""}
-                                    </p>
-                                )}
-                                {request.status === "cancelled" && request.decidedAt && (
-                                    <p className="mt-1 text-xs text-muted">
-                                        Withdrawn {formatDateTime(request.decidedAt)}
-                                    </p>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+            {/* `mt-auto` pins the action to the bottom of the panel, matching
+                the reference layout where it sits under the leave info. */}
+            <div className="mt-auto pt-4">
+                <button
+                    type="button"
+                    onClick={props.onRequest}
+                    className="flex min-h-11 w-full items-center justify-center rounded-lg bg-primary-dark px-4 text-sm font-medium text-white transition-colors hover:bg-primary-press"
+                >
+                    Request leave
+                </button>
             </div>
-
-            {withdrawFor && (
-                <ConfirmDialog
-                    title="Withdraw this request?"
-                    message={
-                        <>
-                            <p>
-                                This withdraws your leave request for{" "}
-                                <strong>
-                                    {formatDay(withdrawFor.startDate)} –{" "}
-                                    {formatDay(withdrawFor.endDate)}
-                                </strong>
-                                . The owner will no longer see it as pending.
-                            </p>
-                            <p className="mt-2 text-xs text-muted">
-                                You can submit a new request afterwards.
-                            </p>
-                        </>
-                    }
-                    confirmLabel="Withdraw request"
-                    busy={busy}
-                    busyLabel="Withdrawing…"
-                    onConfirm={() => void withdraw()}
-                    onCancel={() => setWithdrawFor(null)}
-                />
-            )}
         </section>
     );
 }
