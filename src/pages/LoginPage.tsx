@@ -2,6 +2,7 @@ import { useState } from "react";
 import { errorMessage } from "../lib/api";
 import { login } from "../lib/auth";
 import { toast } from "../lib/toast";
+import company_logo from "../../public/web-logo.png"
 
 // Types
 import type { SessionUser } from "../types";
@@ -33,12 +34,9 @@ export default function LoginPage(props: { onLoggedIn: (user: SessionUser) => vo
     return (
         <div className="mx-auto max-w-md px-4 py-16">
             <header className="mb-8 flex flex-col items-center text-center">
-                <span
-                    aria-hidden
-                    className="mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-primary text-lg font-bold text-white shadow-lift"
-                >
-                    R
-                </span>
+                <div className="relative max-w-24 max-h-24 rounded-full overflow-hidden">
+                    <img src={company_logo} alt="" />
+                </div>
                 <h1 className="text-2xl font-semibold tracking-tight">SalonEase staff login</h1>
                 <p className="mt-2 text-sm text-muted">
                     Raheem Make Up Studio and Salon

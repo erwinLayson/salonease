@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, conflictAlternatives, copyToClipboard } from "../lib/api";
 import { toast } from "../lib/toast";
+import company_logo from "../../public/company-logo.png"
 
 // Types
 import type {
@@ -329,12 +330,9 @@ export default function BookingPage() {
                     href="/"
                     className="flex min-h-11 items-center gap-2.5 rounded-lg pr-2 transition-opacity hover:opacity-80"
                 >
-                    <span
-                        aria-hidden
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary text-sm font-bold text-white shadow-sm"
-                    >
-                        R
-                    </span>
+                    <div className="relative max-w-16 max-h-16 overflow-hidden">
+                        <img src={company_logo} alt="Company-logo" />
+                    </div>
                     <span className="text-sm font-semibold tracking-tight">
                         Raheem Make Up Studio{" "}
                         <span className="hidden sm:inline">and Salon</span>
@@ -352,12 +350,6 @@ export default function BookingPage() {
                 {/* Sidebar: page heading + live booking summary */}
                 <aside className="contents lg:flex lg:w-80 lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-border lg:bg-surface lg:px-6 lg:py-10 xl:w-96">
                     <div className="border-b border-border bg-surface px-4 py-6 sm:px-6 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
-                        <a
-                            href="/"
-                            className="inline-flex min-h-11 items-center text-xs text-muted underline decoration-border transition-colors hover:text-primary-dark"
-                        >
-                            ← Back to home
-                        </a>
                         <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
                             Book your appointment
                         </h1>
