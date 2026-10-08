@@ -1,4 +1,4 @@
-import heroImage from "../../assets/company-logo.png";
+import heroImage from "../../assets/landing_page-logo.png";
 
 const STATS = [
     { value: "8+", label: "Beauty services" },
@@ -56,7 +56,7 @@ export function Hero() {
                     <img
                         src={heroImage}
                         alt="Stylist finishing a client's look at Raheem Make Up Studio and Salon"
-                        className="aspect-[4/3] w-full rounded-2xl border border-border object-cover shadow-lg"
+                        className="w-full rounded-2xl border border-border object-cover shadow-lg"
                     />
                 </div>
             </div>

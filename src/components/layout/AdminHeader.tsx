@@ -1,5 +1,5 @@
 import { MenuIcon } from "../ui/icons";
-import logo from "../../assets/company-logo.png";
+import logo from "../../../public/company-logo.png";
 
 /**
  * Compact top bar for small screens: menu toggle + brand.

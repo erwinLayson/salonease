@@ -1,5 +1,5 @@
 import { useState } from "react";
-import logo from "../../assets/company-logo.png"
+import logo from "../../../public/company-logo.png"
 
 const NAV_LINKS = [
     { href: "/#about", label: "About" },
