@@ -69,6 +69,7 @@ export function RescheduleForm(props: RescheduleFormProps) {
                     date={date}
                     selected={slot}
                     onSelect={setSlot}
+                    excludeAppointmentId={props.appointment.id}
                 />
             </div>
 

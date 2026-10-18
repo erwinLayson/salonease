@@ -83,6 +83,8 @@ export default function BookingPage() {
     } | null>(null);
     const [availability, setAvailability] = useState<AvailabilityResponse | null>(null);
     const [slot, setSlot] = useState<string | null>(null);
+    const slotRef = useRef<string | null>(null);
+    const [availabilityUpdatedAt, setAvailabilityUpdatedAt] = useState<Date | null>(null);
     const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "" });
     const [errors, setErrors] = useState<{ firstName?: string; contact?: string }>({});
     const [slotError, setSlotError] = useState(false);
@@ -131,30 +133,71 @@ export default function BookingPage() {
         void load();
     }, [service]);
 
-    // Load availability when the slot step is open.
+    // Keep the current selection in a ref so the polling effect does not need
+    // to restart every time the guest picks a different slot.
+    useEffect(() => {
+        slotRef.current = slot;
+    }, [slot]);
+
+    // Load availability when the slot step is open, then refresh every 15 s
+    // while the tab is visible. This keeps the guest's slot list current without
+    // a page reload; the server still re-verifies the slot on submit.
     useEffect(() => {
         if (step !== "slot" || !service) {
             return;
         }
-        const load = async () => {
-            setLoading(true);
+
+        let cancelled = false;
+
+        const load = async (initial: boolean) => {
+            if (document.visibilityState !== "visible") return;
+            if (initial) setLoading(true);
             try {
-                const res = await api.get<{ data: AvailabilityResponse }>("/public/availability", {
-                    params: {
-                        serviceId: service.id,
-                        date,
-                        ...(staffId ? { staffId } : {}),
-                    },
-                });
+                const res = await api.get<{ data: AvailabilityResponse }>(
+                    "/public/availability",
+                    {
+                        params: {
+                            serviceId: service.id,
+                            date,
+                            ...(staffId ? { staffId } : {}),
+                        },
+                    }
+                );
+                if (cancelled) return;
                 setAvailability(res.data.data);
-                setSlot(null);
+                setAvailabilityUpdatedAt(new Date());
+
+                const selected = slotRef.current;
+                if (selected) {
+                    const stillOpen = res.data.data.staff.some((entry) =>
+                        entry.slots.includes(selected)
+                    );
+                    if (!stillOpen) {
+                        setSlot(null);
+                        setSlotError(true);
+                    }
+                } else if (initial) {
+                    setSlot(null);
+                }
             } catch {
                 // Failures surface as a toast via the axios error interceptor.
             } finally {
-                setLoading(false);
+                if (!cancelled && initial) setLoading(false);
             }
         };
-        void load();
+
+        void load(true);
+        const timer = window.setInterval(() => void load(false), 15_000);
+        const onVisible = () => {
+            if (document.visibilityState === "visible") void load(false);
+        };
+        document.addEventListener("visibilitychange", onVisible);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(timer);
+            document.removeEventListener("visibilitychange", onVisible);
+        };
     }, [step, service, date, staffId]);
 
     // Load per-date open-time counts for the viewed month — powers the
@@ -619,9 +662,19 @@ export default function BookingPage() {
 
                         {step === "slot" && (
                             <section>
-                                <p className="mb-4 text-sm text-muted">
+                                <p className="mb-2 text-sm text-muted">
                                     Choose a date, then pick one of the available times.
                                 </p>
+                                {availabilityUpdatedAt && (
+                                    <p className="mb-4 text-xs text-muted">
+                                        Availability updated at{" "}
+                                        {availabilityUpdatedAt.toLocaleTimeString([], {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        })}{" "}
+                                        · refreshes automatically
+                                    </p>
+                                )}
                                 <div className="mb-5">
                                     <span className="mb-2 block text-sm font-medium text-charcoal">
                                         Date
@@ -815,7 +868,7 @@ export default function BookingPage() {
                         )}
 
                         {step === "done" && confirmation && (
-                            <section>
+                            <section className="mx-auto max-w-2xl">
                                 <div className="mb-5 flex flex-col items-center text-center">
                                     <span
                                         aria-hidden

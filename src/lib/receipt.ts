@@ -45,8 +45,12 @@ export const downloadReceipt = (
         doc.setFont("helvetica", "bold").setFontSize(10);
         doc.text(label, margin, y);
         doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.text(value, margin + 120, y);
-        y += 18;
+        const lines: string[] = doc.splitTextToSize(
+            value,
+            width - margin - (margin + 120)
+        );
+        doc.text(lines, margin + 120, y);
+        y += 18 * Math.max(1, lines.length);
     };
 
     row("O.R. No.", booking.reference, true);

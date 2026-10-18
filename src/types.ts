@@ -1,7 +1,18 @@
+export type ServiceCategory =
+    | "hair"
+    | "makeup"
+    | "nails"
+    | "skin"
+    | "bridal"
+    | "event"
+    | "package"
+    | "other";
+
 export interface Service {
     id: number;
     name: string;
     description: string | null;
+    category?: ServiceCategory;
     price: number;
     durationMinutes: number;
 }
@@ -152,6 +163,7 @@ export interface OwnerService {
     id: number;
     name: string;
     description: string | null;
+    category: ServiceCategory;
     price: number;
     duration_minutes: number;
     is_active: number;
@@ -290,6 +302,176 @@ export interface PublicTeamMember {
     profilePhoto: string | null;
 }
 
+// --- Walk-in queue ---
+
+export type QueueStatus =
+    | "waiting"
+    | "called"
+    | "in_service"
+    | "completed"
+    | "cancelled"
+    | "no_show";
+
+export interface QueueTicket {
+    id: number;
+    queueDate: string;
+    ticketNumber: number;
+    customerName: string;
+    customerPhone: string | null;
+    service: { id: number; name: string; durationMinutes: number };
+    preferredStaff: { id: number; name: string } | null;
+    assignedStaff: { id: number; name: string } | null;
+    status: QueueStatus;
+    checkedInAt: string;
+    calledAt: string | null;
+    startedAt: string | null;
+    completedAt: string | null;
+    estimatedWaitMinutes: number | null;
+    appointmentId: number | null;
+    notes: string | null;
+}
+
+// --- In-app notifications ---
+
+export type InAppNotificationType =
+    | "low_stock"
+    | "event_assigned"
+    | "event_changed"
+    | "commission_ready"
+    | "system";
+
+export interface InAppNotification {
+    id: number;
+    type: InAppNotificationType;
+    severity: "info" | "warning" | "critical";
+    title: string;
+    body: string;
+    link: string | null;
+    readAt: string | null;
+    createdAt: string;
+}
+
+export interface NotificationInbox {
+    items: InAppNotification[];
+    unread: number;
+}
+
+// --- Events ---
+
+export type EventStatus =
+    | "inquiry"
+    | "confirmed"
+    | "in_progress"
+    | "completed"
+    | "cancelled";
+
+export type EventType =
+    | "wedding"
+    | "debut"
+    | "corporate"
+    | "photoshoot"
+    | "other";
+
+export type EventAssignmentRole =
+    | "lead"
+    | "assistant"
+    | "makeup"
+    | "hair"
+    | "coordinator";
+
+export interface Venue {
+    id: number;
+    name: string;
+    address: string;
+    contactName: string | null;
+    contactPhone: string | null;
+    notes: string | null;
+    isActive: boolean;
+}
+
+export interface EventAssignment {
+    id: number;
+    staffId: number;
+    staffName: string;
+    role: EventAssignmentRole;
+    callTime: string;
+    releaseTime: string;
+    travelRequired: boolean;
+    status: string;
+    commissionSharePercent: number | null;
+    notes: string | null;
+    conflict: string | null;
+}
+
+export interface EventTravelSegment {
+    id: number;
+    staffId: number | null;
+    staffName: string | null;
+    sequence: number;
+    from: string;
+    to: string;
+    departAt: string;
+    arriveAt: string;
+    mode: string;
+    notes: string | null;
+}
+
+export interface EventSupplyLine {
+    supplyId: number;
+    name: string;
+    unit: string;
+    plannedQuantity: number;
+    issuedQuantity: number;
+    returnedQuantity: number;
+    consumedQuantity: number;
+    status: string;
+}
+
+export interface EventDetail {
+    id: number;
+    reference: string;
+    customer: {
+        id: number;
+        name: string;
+        phone: string | null;
+        email: string | null;
+    };
+    venue: { id: number; name: string } | null;
+    title: string;
+    eventType: EventType;
+    eventDate: string;
+    startAt: string;
+    endAt: string;
+    status: EventStatus;
+    travelBufferMinutes: number;
+    notes: string | null;
+    total: number;
+    services: Array<{
+        serviceId: number;
+        name: string;
+        quantity: number;
+        price: number;
+    }>;
+    assignments: EventAssignment[];
+    itinerary: EventTravelSegment[];
+    supplies: EventSupplyLine[];
+}
+
+export interface StaffEvent {
+    eventId: number;
+    reference: string;
+    title: string;
+    eventDate: string;
+    startAt: string;
+    endAt: string;
+    venueName: string | null;
+    role: EventAssignmentRole;
+    callTime: string;
+    releaseTime: string;
+    travelRequired: boolean;
+    status: string;
+}
+
 // --- Transactions (Phase 8) ---
 
 export type PaymentMethod = "cash" | "gcash" | "card" | "other";
@@ -336,6 +518,176 @@ export interface YearlyTopService {
     name: string;
     bookings: number;
     revenue: number;
+}
+
+// --- Finance: commissions and daily close ---
+
+export type CommissionRateType = "percent" | "fixed";
+export type CommissionEntryStatus = "accrued" | "approved" | "paid" | "void";
+export type PayoutStatus = "draft" | "approved" | "paid" | "void";
+
+/** A commission rule row. `staffId`/`serviceId` null mean "all". */
+export interface CommissionRule {
+    id: number;
+    staffId: number | null;
+    serviceId: number | null;
+    serviceCategory: ServiceCategory | null;
+    rateType: CommissionRateType;
+    rateValue: number;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    priority: number;
+    isActive: boolean;
+    notes: string | null;
+}
+
+export interface CommissionEntry {
+    id: number;
+    sourceType: "appointment" | "event";
+    sourceId: number;
+    transactionId: number | null;
+    transactionReference: string | null;
+    eventId: number | null;
+    eventReference: string | null;
+    staffId: number;
+    staffName: string;
+    serviceId: number | null;
+    serviceName: string | null;
+    baseAmount: number;
+    rateType: CommissionRateType;
+    rateValue: number;
+    commissionAmount: number;
+    status: CommissionEntryStatus;
+    payoutId: number | null;
+    accruedAt: string;
+}
+
+export interface CommissionPayout {
+    id: number;
+    staffId: number;
+    staffName: string;
+    periodStart: string;
+    periodEnd: string;
+    totalAmount: number;
+    status: PayoutStatus;
+    paymentMethod: PaymentMethod | null;
+    paidAt: string | null;
+    notes: string | null;
+}
+
+export interface CommissionPreview {
+    baseAmount: number;
+    rule: {
+        id: number;
+        staffId: number | null;
+        serviceId: number | null;
+        serviceCategory: string | null;
+        rateType: CommissionRateType;
+        rateValue: number;
+        effectiveFrom: string;
+        effectiveTo: string | null;
+        priority: number;
+        isActive: boolean;
+    } | null;
+    commissionAmount: number;
+}
+
+export type ClosureStatus = "open" | "closed" | "reopened";
+
+export interface DailyTotals {
+    transactionCount: number;
+    grossSales: number;
+    paidTotal: number;
+    unpaidTotal: number;
+    waivedTotal: number;
+    cashTotal: number;
+    gcashTotal: number;
+    cardTotal: number;
+    otherTotal: number;
+    commissionTotal: number;
+    inventoryCostTotal: number;
+}
+
+/** GET /api/owner/closures/:date — the stored close plus today's live totals. */
+export interface DaySummary extends DailyTotals {
+    id: number;
+    businessDate: string;
+    discounts: number;
+    netSales: number;
+    cashCounted: number | null;
+    cashVariance: number | null;
+    status: ClosureStatus;
+    notes: string | null;
+    closedAt: string | null;
+    reopenedAt: string | null;
+    reopenReason: string | null;
+    live: DailyTotals;
+}
+
+export type SalesGroupBy = "day" | "week" | "month" | "staff" | "service" | "method";
+
+export interface SalesReportRow {
+    bucket: string;
+    staff_id: number | null;
+    staff_name: string | null;
+    service_id: number | null;
+    service_name: string | null;
+    payment_method: PaymentMethod | null;
+    transactions: number;
+    gross: number;
+    paid: number;
+    commission: number;
+}
+
+export interface WaitTimeMetrics {
+    tickets: number;
+    served: number;
+    avgWaitMinutes: number;
+    longestWaitMinutes: number;
+}
+
+export interface WaitTimeReport {
+    from: string;
+    to: string;
+    overall: WaitTimeMetrics;
+    days: Array<WaitTimeMetrics & { date: string }>;
+    staff: Array<WaitTimeMetrics & { staffId: number | null; staffName: string }>;
+}
+
+export interface ReconciliationReport {
+    from: string;
+    to: string;
+    missingTransactions: Array<{
+        kind: "appointment" | "event";
+        id: number;
+        reference: string;
+        occurredAt: string;
+        customerName: string;
+        staffName: string;
+        serviceName: string | null;
+        amount: number;
+    }>;
+    missingCommissions: Array<{
+        id: number;
+        reference: string;
+        completedAt: string;
+        staffName: string;
+        subtotal: number;
+        appointmentId: number | null;
+        eventId: number | null;
+    }>;
+    commissionMismatches: Array<{
+        id: number;
+        reference: string;
+        completedAt: string;
+        storedTotal: number;
+        ledgerTotal: number;
+    }>;
+    counts: {
+        missingTransactions: number;
+        missingCommissions: number;
+        commissionMismatches: number;
+    };
 }
 
 /** GET /api/owner/reports/yearly response payload. */

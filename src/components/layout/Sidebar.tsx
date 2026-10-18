@@ -2,6 +2,7 @@ import { roleNavItems, type SidebarItem } from "../../constant/nav";
 import type { SessionUser } from "../../types";
 import { LogoutIcon } from "../ui/icons";
 import logo from "../../../public/company-logo.png";
+import { NotificationBell } from "./NotificationBell";
 
 const cleanPath = (href: string): string =>
     href.split("?")[0].replace(/\/+$/, "") || "/";
@@ -32,18 +33,20 @@ export function Sidebar(props: {
     };
 
     return (
-        <div className="flex h-full flex-col border-r border-border bg-surface">
-            <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
-                    <img src={logo} alt="" className="h-full w-full object-cover" />
-                </span>
-                <span className="text-sm font-semibold tracking-tight">
-                    Raheem Make Up Studio{" "}
-                    <span className="hidden xl:inline">and Salon</span>
-                </span>
-            </div>
+        <div className="flex h-full min-h-0 flex-col border-r border-border bg-surface">
+            <header className="shrink-0 border-b border-border px-5 py-4">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+                        <img src={logo} alt="" className="h-full w-full object-cover" />
+                    </span>
+                    <span className="text-sm font-semibold tracking-tight">
+                        Raheem Make Up Studio{" "}
+                        <span className="hidden xl:inline">and Salon</span>
+                    </span>
+                </div>
+            </header>
 
-            <nav className="flex-1 px-3 py-3">
+            <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
                 <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
                     Menu
                 </p>
@@ -66,9 +69,9 @@ export function Sidebar(props: {
                         </li>
                     ))}
                 </ul>
-            </nav>
+            </div>
 
-            <div className="border-t border-border p-4">
+            <footer className="shrink-0 border-t border-border p-4">
                 <div className="flex items-center gap-3">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-sm font-semibold text-charcoal">
                         {props.user.username.charAt(0).toUpperCase()}
@@ -81,6 +84,7 @@ export function Sidebar(props: {
                             {ROLE_LABELS[props.user.role]}
                         </p>
                     </div>
+                    <NotificationBell />
                     <button
                         type="button"
                         onClick={props.onLogout}
@@ -91,7 +95,7 @@ export function Sidebar(props: {
                         <LogoutIcon />
                     </button>
                 </div>
-            </div>
+            </footer>
         </div>
     );
 }

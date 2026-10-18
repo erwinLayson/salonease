@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../lib/api";
 
 import type {
+    AppointmentDetail,
     AvailabilityResponse,
     SlotAvailabilityStatus,
     StaffSlots,
@@ -69,39 +70,63 @@ export function SlotGrid(props: {
         status: SlotAvailabilityStatus | null,
         reason: string | null
     ) => void;
+    /** Appointment to exclude from the booked (red) set, e.g. when rescheduling. */
+    excludeAppointmentId?: number | null;
 }) {
     const [data, setData] = useState<AvailabilityResponse | null>(null);
+    const [booked, setBooked] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             setLoading(true);
             try {
-                const res = await api.get<{ data: AvailabilityResponse }>(
-                    "/owner/availability",
-                    {
-                        params: {
-                            serviceId: props.serviceId,
-                            date: props.date,
-                            ...(props.staffId ? { staffId: props.staffId } : {}),
-                        },
-                    }
-                );
-                setData(res.data.data);
+                const [availRes, apptRes] = await Promise.all([
+                    api.get<{ data: AvailabilityResponse }>(
+                        "/owner/availability",
+                        {
+                            params: {
+                                serviceId: props.serviceId,
+                                date: props.date,
+                                ...(props.staffId ? { staffId: props.staffId } : {}),
+                            },
+                        }
+                    ),
+                    props.staffId
+                        ? api.get<{ data: AppointmentDetail[] }>("/owner/appointments", {
+                              params: { date: props.date, staffId: props.staffId },
+                          })
+                        : Promise.resolve({ data: { data: [] as AppointmentDetail[] } }),
+                ]);
+                setData(availRes.data.data);
+                const activeStatuses = new Set(["pending", "confirmed"]);
+                const bookedSlots = (apptRes.data.data ?? [])
+                    .filter(
+                        (appointment) =>
+                            activeStatuses.has(appointment.status) &&
+                            appointment.id !== (props.excludeAppointmentId ?? null)
+                    )
+                    .map((appointment) => appointment.startAt.slice(11, 16));
+                setBooked([...new Set(bookedSlots)].sort());
             } catch {
                 setData(null);
+                setBooked([]);
             } finally {
                 setLoading(false);
             }
         };
         void load();
-    }, [props.serviceId, props.staffId, props.date]);
+    }, [props.serviceId, props.staffId, props.date, props.excludeAppointmentId]);
 
     const entry = data?.staff[0] ?? null;
-    const slots = useMemo(
+    const availableSlots = useMemo(
         () =>
             [...new Set((data?.staff ?? []).flatMap((item) => item.slots))].sort(),
         [data]
+    );
+    const slots = useMemo(
+        () => [...new Set([...availableSlots, ...booked])].sort(),
+        [availableSlots, booked]
     );
 
     const { onStatusChange } = props;
@@ -125,21 +150,32 @@ export function SlotGrid(props: {
                 </p>
             ) : (
                 <div className="flex flex-wrap gap-2">
-                    {slots.map((slot) => (
-                        <button
-                            key={slot}
-                            type="button"
-                            onClick={() => props.onSelect(slot)}
-                            aria-pressed={props.selected === slot}
-                            className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                props.selected === slot
-                                    ? "border-primary-dark bg-primary-dark font-medium text-white shadow-sm"
-                                    : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
-                            }`}
-                        >
-                            {slot}
-                        </button>
-                    ))}
+                    {slots.map((slot) => {
+                        const isBooked = booked.includes(slot) && !availableSlots.includes(slot);
+                        return (
+                            <button
+                                key={slot}
+                                type="button"
+                                disabled={isBooked}
+                                onClick={() => {
+                                    if (isBooked) {
+                                        return;
+                                    }
+                                    props.onSelect(slot);
+                                }}
+                                aria-pressed={props.selected === slot}
+                                className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                    isBooked
+                                        ? "cursor-not-allowed border-danger-line bg-danger-bg text-danger"
+                                        : props.selected === slot
+                                          ? "border-primary-dark bg-primary-dark font-medium text-white shadow-sm"
+                                          : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
+                                }`}
+                            >
+                                {slot}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>

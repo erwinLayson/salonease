@@ -96,7 +96,7 @@ export function Modal(props: {
                 aria-label={props.title}
                 tabIndex={-1}
                 onKeyDown={trapFocus}
-                className={`relative max-h-[calc(100svh-2rem)] w-full ${
+                className={`no-scrollbar relative max-h-[calc(100svh-2rem)] w-full ${
                     props.wide ? "max-w-2xl" : "max-w-lg"
                 } overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-lift`}
             >

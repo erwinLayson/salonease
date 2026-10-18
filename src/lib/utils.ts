@@ -12,12 +12,16 @@ export const formatDateTime = (value: string): string =>
     new Date(value).toLocaleString(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
+        hour12: true,
     });
 
-/** `HH:mm` for a date-time string. */
+/** 12-hour clock time (e.g. `2:30 PM`) for a date-time string. */
 export const formatClock = (value: string): string => {
     const date = new Date(value);
-    return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    const hour = date.getHours();
+    const suffix = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${hour12}:${pad(date.getMinutes())} ${suffix}`;
 };
 
 export const peso = (amount: number): string => `₱${amount.toFixed(2)}`;

@@ -90,6 +90,15 @@ body {
   animation-play-state: paused;
 }
 
+/* Hide scrollbars while keeping the element scrollable. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .team-marquee {
     animation: none;

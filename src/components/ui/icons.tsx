@@ -102,6 +102,50 @@ export function ReceiptIcon() {
     );
 }
 
+export function QueueIcon() {
+    return (
+        <Icon>
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <circle cx="4" cy="6" r="1" />
+            <circle cx="4" cy="12" r="1" />
+            <circle cx="4" cy="18" r="1" />
+        </Icon>
+    );
+}
+
+export function BellIcon() {
+    return (
+        <Icon>
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </Icon>
+    );
+}
+
+export function BoxIcon() {
+    return (
+        <Icon>
+            <path d="M21 8l-9-5-9 5 9 5 9-5z" />
+            <path d="M3 8v8l9 5 9-5V8" />
+            <line x1="12" y1="13" x2="12" y2="21" />
+        </Icon>
+    );
+}
+
+export function EventIcon() {
+    return (
+        <Icon>
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+            <path d="M8 15h3v3H8z" />
+        </Icon>
+    );
+}
+
 export function TrendingUpIcon() {
     return (
         <Icon>
