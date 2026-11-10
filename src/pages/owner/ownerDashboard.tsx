@@ -11,7 +11,6 @@ import { Field } from "../../components/ui/Field";
 import { Select } from "../../components/ui/Select";
 
 // Shared dashboard components
-import { LeaveRequestsSection } from "../../components/owner/LeaveRequestsSection";
 import { WalkInBookingWizard } from "../../components/owner/WalkInBookingWizard";
 import { NotesForm } from "../../components/owner/NotesForm";
 import { RescheduleForm } from "../../components/owner/RescheduleForm";
@@ -117,7 +116,9 @@ export default function OwnerDashboard() {
         }
     };
 
-    const hasFilters = Boolean(staffId || status || search);
+    const hasFilters = Boolean(
+        staffId || status || search || view === "day" || date !== dateInDays(0)
+    );
     const dayLabel = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
         weekday: "long",
         month: "long",
@@ -137,56 +138,188 @@ export default function OwnerDashboard() {
 
     return (
         <div className="grid gap-6">
-            <header>
-                <h1 className="text-xl font-semibold tracking-tight">Appointments</h1>
-                <p className="mt-1 text-sm text-muted">
-                    Filter, confirm and manage your bookings.
-                </p>
+            <header className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h1 className="text-xl font-semibold tracking-tight">Appointments</h1>
+                    <p className="mt-1 text-sm text-muted">
+                        Filter, confirm and manage your bookings.
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setShowNew(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary-dark min-h-11 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-press focus-visible:outline-2 focus-visible:outline-primary-dark"
+                >
+                    <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                    >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    New walk-in / phone booking
+                </button>
             </header>
 
-            <Card title="Filter appointments">
-                <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <span className="text-sm font-medium text-charcoal">Show</span>
-                    <div
-                        className="flex rounded-lg border border-border p-0.5"
-                        role="group"
-                        aria-label="Date range"
-                    >
+            <Card
+                title="Filter appointments"
+                actions={
+                    <div className="flex items-center gap-2">
+                        {hasFilters && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setView("upcoming");
+                                    setDate(dateInDays(0));
+                                    setStaffId("");
+                                    setStatus("");
+                                    setSearch("");
+                                }}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal hover:bg-charcoal/5 transition-colors"
+                            >
+                                <svg
+                                    className="h-3.5 w-3.5 text-muted"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                    <path d="M3 3v5h5" />
+                                </svg>
+                                Reset filters
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={() => setView("day")}
-                            aria-pressed={view === "day"}
-                            className={`min-h-11 rounded-md px-4 text-sm font-medium transition-colors ${
-                                view === "day"
-                                    ? "bg-primary-dark text-white shadow-sm"
-                                    : "text-charcoal hover:bg-charcoal/5"
-                            }`}
+                            onClick={() => void reload()}
+                            disabled={loading}
+                            title="Reload appointments"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal hover:bg-charcoal/5 transition-colors disabled:opacity-50"
                         >
-                            Selected day
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setView("upcoming")}
-                            aria-pressed={view === "upcoming"}
-                            className={`min-h-11 rounded-md px-4 text-sm font-medium transition-colors ${
-                                view === "upcoming"
-                                    ? "bg-primary-dark text-white shadow-sm"
-                                    : "text-charcoal hover:bg-charcoal/5"
-                            }`}
-                        >
-                            Upcoming
+                            <svg
+                                className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <polyline points="23 4 23 10 17 10" />
+                                <polyline points="1 20 1 14 7 14" />
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                            </svg>
+                            Refresh
                         </button>
                     </div>
-                    <span className="text-xs text-muted">
-                        {view === "upcoming"
-                            ? "Every booking from today onward, soonest first"
-                            : "One day only"}
-                    </span>
+                }
+            >
+                {/* View & Timeframe Control Strip */}
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-charcoal/[0.02] p-2.5 sm:p-3 border border-border/50">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                            Show
+                        </span>
+                        <div
+                            className="inline-flex rounded-lg bg-charcoal/5 p-1 border border-border/40"
+                            role="group"
+                            aria-label="Date range"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setView("upcoming")}
+                                aria-pressed={view === "upcoming"}
+                                className={`rounded-md px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all ${
+                                    view === "upcoming"
+                                        ? "bg-primary-dark text-white shadow-xs"
+                                        : "text-charcoal hover:bg-charcoal/5"
+                                }`}
+                            >
+                                Upcoming
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setView("day")}
+                                aria-pressed={view === "day"}
+                                className={`rounded-md px-3.5 py-1.5 text-xs sm:text-sm font-medium transition-all ${
+                                    view === "day"
+                                        ? "bg-primary-dark text-white shadow-xs"
+                                        : "text-charcoal hover:bg-charcoal/5"
+                                }`}
+                            >
+                                Selected day
+                            </button>
+                        </div>
+
+                        {view === "day" && (
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const d = new Date(`${date}T00:00:00`);
+                                        d.setDate(d.getDate() - 1);
+                                        setDate(d.toISOString().slice(0, 10));
+                                    }}
+                                    aria-label="Previous day"
+                                    title="Previous day"
+                                    className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface text-charcoal hover:bg-charcoal/5 transition-colors text-base font-bold"
+                                >
+                                    ‹
+                                </button>
+                                <input
+                                    type="date"
+                                    value={date}
+                                    onChange={(e) => setDate(e.target.value)}
+                                    aria-label="Select date"
+                                    className="h-9 rounded-lg border border-border bg-surface px-2.5 text-sm font-medium text-charcoal outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/40"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const d = new Date(`${date}T00:00:00`);
+                                        d.setDate(d.getDate() + 1);
+                                        setDate(d.toISOString().slice(0, 10));
+                                    }}
+                                    aria-label="Next day"
+                                    title="Next day"
+                                    className="grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface text-charcoal hover:bg-charcoal/5 transition-colors text-base font-bold"
+                                >
+                                    ›
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setDate(dateInDays(0))}
+                                    className="h-9 rounded-lg border border-border bg-surface px-2.5 text-xs font-medium text-charcoal hover:bg-charcoal/5 transition-colors"
+                                >
+                                    Today
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-xs text-muted">
+                        <span className="inline-block h-2 w-2 rounded-full bg-primary" />
+                        <span>
+                            {view === "upcoming"
+                                ? "Every booking from today onward, soonest first"
+                                : dayLabel}
+                        </span>
+                    </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-4">
-                    {view === "day" && (
-                        <Field label="Date" value={date} onChange={setDate} type="date" />
-                    )}
+
+                {/* Structured Filter Inputs Grid */}
+                <div className="grid gap-3 sm:grid-cols-3">
                     <Select
                         label="Staff"
                         value={staffId}
@@ -211,35 +344,6 @@ export default function OwnerDashboard() {
                         onChange={setSearch}
                         placeholder="Reference or name"
                     />
-                </div>
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                    <button
-                        type="button"
-                        onClick={() => void reload()}
-                        className="rounded-lg border border-border min-h-11 px-4 py-2 text-sm transition-colors hover:bg-charcoal/5"
-                    >
-                        Refresh
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setView("upcoming");
-                            setDate(dateInDays(0));
-                            setStaffId("");
-                            setStatus("");
-                            setSearch("");
-                        }}
-                        className="rounded-lg border border-border min-h-11 px-4 py-2 text-sm transition-colors hover:bg-charcoal/5"
-                    >
-                        Reset
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setShowNew(true)}
-                        className="ml-auto rounded-lg bg-primary-dark min-h-11 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-press"
-                    >
-                        New walk-in / phone booking
-                    </button>
                 </div>
             </Card>
 
@@ -366,14 +470,14 @@ export default function OwnerDashboard() {
                     </p>
                 )}
                 {!loading && appointments.length === 0 && (
-                    <div className="py-10 text-center">
+                    <div className="py-7 text-center">
                         <span
                             aria-hidden
-                            className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-charcoal/5 text-muted"
+                            className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-charcoal/5 text-muted"
                         >
                             <svg
-                                width="22"
-                                height="22"
+                                width="20"
+                                height="20"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"
@@ -384,13 +488,13 @@ export default function OwnerDashboard() {
                                 <path d="M3 9h18M8 3v4M16 3v4" />
                             </svg>
                         </span>
-                        <p className="mt-3 text-sm font-medium">{emptyTitle}</p>
-                        <p className="mt-1 text-xs text-muted">{emptyHint}</p>
+                        <p className="mt-2.5 text-sm font-medium text-charcoal">{emptyTitle}</p>
+                        <p className="mt-1 text-xs text-muted max-w-sm mx-auto">{emptyHint}</p>
                         {view === "day" && (
                             <button
                                 type="button"
                                 onClick={() => setView("upcoming")}
-                                className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-charcoal/5"
+                                className="mt-3.5 inline-flex min-h-10 items-center rounded-lg border border-border px-3.5 text-xs font-medium text-charcoal transition-colors hover:bg-charcoal/5"
                             >
                                 View upcoming appointments
                             </button>
@@ -503,8 +607,6 @@ export default function OwnerDashboard() {
                     ))}
                 </ul>
             </Card>
-
-            <LeaveRequestsSection />
         </div>
     );
 }

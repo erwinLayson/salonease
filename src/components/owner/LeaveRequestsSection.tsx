@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, errorMessage } from "../../lib/api";
 import { toast } from "../../lib/toast";
 
@@ -10,16 +10,8 @@ import { Select } from "../ui/Select";
 import { LeaveRequestReviewModal } from "./LeaveRequestReviewModal";
 
 // Types
-import type { LeaveRequest } from "../../types";
+import type { LeaveRequest, OwnerStaff } from "../../types";
 import { formatDateTime } from "../../lib/utils";
-
-const STATUS_OPTIONS = [
-    { value: "", label: "All requests" },
-    { value: "pending", label: "Pending" },
-    { value: "approved", label: "Approved" },
-    { value: "rejected", label: "Rejected" },
-    { value: "cancelled", label: "Cancelled" },
-];
 
 /** `2026-10-03` -> `Oct 3, 2026`. */
 const formatDay = (key: string): string =>
@@ -29,13 +21,20 @@ const formatDay = (key: string): string =>
         year: "numeric",
     });
 
+export interface LeaveRequestsSectionProps {
+    staffList?: OwnerStaff[];
+    onPendingCountChange?: (count: number) => void;
+}
+
 /**
- * Owner dashboard section: staff leave requests with the decision actions.
+ * Staff leave requests management interface with review, approval, and cancellation workflows.
  * Pending requests open the review modal (conflict check + approve/reject);
- * approved ones can be undone, which unblocks the dates again.
+ * approved requests can be revoked, which restores appointment availability.
  */
-export function LeaveRequestsSection() {
-    const [status, setStatus] = useState("");
+export function LeaveRequestsSection(props: LeaveRequestsSectionProps) {
+    const { staffList, onPendingCountChange } = props;
+    const [selectedStatus, setSelectedStatus] = useState<string>("pending");
+    const [selectedStaffId, setSelectedStaffId] = useState<string>("");
     const [requests, setRequests] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [localKey, setLocalKey] = useState(0);
@@ -45,17 +44,25 @@ export function LeaveRequestsSection() {
 
     const reload = useCallback(() => setLocalKey((key) => key + 1), []);
 
+    const onPendingCountChangeRef = useRef(onPendingCountChange);
+    useEffect(() => {
+        onPendingCountChangeRef.current = onPendingCountChange;
+    }, [onPendingCountChange]);
+
     useEffect(() => {
         let stale = false;
         const load = async () => {
             setLoading(true);
             try {
+                // Fetch all requests to compute tab counts and enable instant tab switching
                 const res = await api.get<{ data: LeaveRequest[] }>(
                     "/owner/leave-requests",
-                    { params: status ? { status } : {} }
+                    { params: selectedStaffId ? { staffId: selectedStaffId } : {} }
                 );
                 if (!stale) {
                     setRequests(res.data.data);
+                    const pending = res.data.data.filter((r) => r.status === "pending").length;
+                    onPendingCountChangeRef.current?.(pending);
                 }
             } catch {
                 // Failures surface as a toast via the axios error interceptor.
@@ -69,7 +76,7 @@ export function LeaveRequestsSection() {
         return () => {
             stale = true;
         };
-    }, [status, localKey]);
+    }, [selectedStaffId, localKey]);
 
     const removeLeave = async (): Promise<void> => {
         if (!removeFor) {
@@ -88,52 +95,207 @@ export function LeaveRequestsSection() {
         }
     };
 
-    const pendingCount = requests.filter((request) => request.status === "pending").length;
+    const pendingCount = useMemo(
+        () => requests.filter((r) => r.status === "pending").length,
+        [requests]
+    );
+    const approvedCount = useMemo(
+        () => requests.filter((r) => r.status === "approved").length,
+        [requests]
+    );
+    const rejectedCount = useMemo(
+        () => requests.filter((r) => r.status === "rejected").length,
+        [requests]
+    );
+
+    // Filter by selected status tab
+    const filteredRequests = useMemo(() => {
+        let list = requests;
+        if (selectedStatus) {
+            list = list.filter((r) => r.status === selectedStatus);
+        }
+        // Prioritize pending requests, then sort by requested start date descending
+        return [...list].sort((a, b) => {
+            if (a.status === "pending" && b.status !== "pending") return -1;
+            if (a.status !== "pending" && b.status === "pending") return 1;
+            return b.startDate.localeCompare(a.startDate);
+        });
+    }, [requests, selectedStatus]);
 
     return (
-        <Card title={`Leave requests (${requests.length})`}>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-                <p className="max-w-xl text-xs text-muted">
-                    Staff submit these from their Schedule page. Only approved leave
-                    blocks availability; you can review affected appointments before
-                    approving.
-                </p>
-                <div className="w-full sm:w-56">
-                    <Select
-                        label="Show"
-                        value={status}
-                        onChange={setStatus}
-                        options={STATUS_OPTIONS}
-                    />
+        <Card
+            title={`Leave requests (${requests.length})`}
+            actions={
+                <button
+                    type="button"
+                    onClick={() => reload()}
+                    disabled={loading}
+                    title="Reload leave requests"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal hover:bg-charcoal/5 transition-colors disabled:opacity-50"
+                >
+                    <svg
+                        className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <polyline points="23 4 23 10 17 10" />
+                        <polyline points="1 20 1 14 7 14" />
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                    </svg>
+                    Refresh
+                </button>
+            }
+        >
+            <p className="max-w-2xl text-xs text-muted">
+                Staff submit time-off requests from their portal. Only approved leave
+                blocks appointment availability. Reviewing a request checks for conflicting bookings.
+            </p>
+
+            {/* Pending alert banner */}
+            {pendingCount > 0 && (
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-warning-line bg-warning-bg/80 px-4 py-2.5 text-sm text-warning">
+                    <div className="flex items-center gap-2">
+                        <span aria-hidden="true" className="font-bold">⚠️</span>
+                        <span>
+                            <strong>{pendingCount}</strong> request{pendingCount === 1 ? "" : "s"} waiting for review
+                        </span>
+                    </div>
+                    {selectedStatus !== "pending" && (
+                        <button
+                            type="button"
+                            onClick={() => setSelectedStatus("pending")}
+                            className="text-xs font-semibold underline hover:text-amber-900"
+                        >
+                            View pending
+                        </button>
+                    )}
                 </div>
+            )}
+
+            {/* Status Pills and Staff Filter Bar */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-3">
+                <div
+                    className="inline-flex flex-wrap rounded-xl bg-charcoal/5 p-1 border border-border/40"
+                    role="tablist"
+                    aria-label="Filter by leave status"
+                >
+                    <button
+                        type="button"
+                        onClick={() => setSelectedStatus("pending")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            selectedStatus === "pending"
+                                ? "bg-primary-dark text-white shadow-xs"
+                                : "text-charcoal hover:bg-charcoal/5"
+                        }`}
+                    >
+                        Pending
+                        {pendingCount > 0 && (
+                            <span
+                                className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                                    selectedStatus === "pending"
+                                        ? "bg-white text-primary-dark"
+                                        : "bg-amber-100 text-amber-800"
+                                }`}
+                            >
+                                {pendingCount}
+                            </span>
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedStatus("approved")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            selectedStatus === "approved"
+                                ? "bg-primary-dark text-white shadow-xs"
+                                : "text-charcoal hover:bg-charcoal/5"
+                        }`}
+                    >
+                        Approved ({approvedCount})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedStatus("rejected")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            selectedStatus === "rejected"
+                                ? "bg-primary-dark text-white shadow-xs"
+                                : "text-charcoal hover:bg-charcoal/5"
+                        }`}
+                    >
+                        Rejected ({rejectedCount})
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSelectedStatus("")}
+                        className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                            selectedStatus === ""
+                                ? "bg-primary-dark text-white shadow-xs"
+                                : "text-charcoal hover:bg-charcoal/5"
+                        }`}
+                    >
+                        All requests ({requests.length})
+                    </button>
+                </div>
+
+                {staffList && staffList.length > 0 && (
+                    <div className="w-full sm:w-48">
+                        <Select
+                            label=""
+                            value={selectedStaffId}
+                            onChange={setSelectedStaffId}
+                            options={[
+                                { value: "", label: "All staff members" },
+                                ...staffList.map((m) => ({
+                                    value: String(m.id),
+                                    label: `${m.first_name} ${m.last_name}`.trim(),
+                                })),
+                            ]}
+                        />
+                    </div>
+                )}
             </div>
 
             {loading ? (
                 <p className="py-6 text-center text-sm text-muted">Loading…</p>
-            ) : requests.length === 0 ? (
+            ) : filteredRequests.length === 0 ? (
                 <div className="py-8 text-center">
                     <p className="text-sm font-medium">
-                        {status ? "No requests with this status" : "No leave requests yet"}
+                        {selectedStatus === "pending"
+                            ? "No pending leave requests"
+                            : selectedStatus === "approved"
+                              ? "No approved leave requests"
+                              : selectedStatus === "rejected"
+                                ? "No rejected leave requests"
+                                : "No leave requests found"}
                     </p>
                     <p className="mt-1 text-xs text-muted">
-                        {status
-                            ? "Choose another status to see more."
-                            : "Requests from staff appear here for review."}
+                        {selectedStatus === "pending"
+                            ? "All employee leave requests have been reviewed."
+                            : "Choose another status tab to see more requests."}
                     </p>
                 </div>
             ) : (
                 <ul className="mt-4 grid gap-3">
-                    {requests.map((request) => (
+                    {filteredRequests.map((request) => (
                         <li
                             key={request.id}
-                            className="rounded-xl border border-border p-4 transition-colors hover:border-primary/70"
+                            className={`rounded-xl border p-4 transition-colors ${
+                                request.status === "pending"
+                                    ? "border-amber-300/80 bg-amber-50/15 hover:border-amber-400"
+                                    : request.status === "approved"
+                                      ? "border-emerald-200 bg-emerald-50/10 hover:border-emerald-300"
+                                      : "border-border hover:border-primary/50"
+                            }`}
                         >
                             <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-semibold">
+                                <span className="text-sm font-semibold text-charcoal">
                                     {request.staffName}
                                 </span>
                                 <LeaveStatusBadge status={request.status} />
-                                <span className="ml-auto rounded-lg bg-primary-light px-2.5 py-1 text-xs font-medium text-charcoal">
+                                <span className="ml-auto rounded-lg bg-primary-light/40 px-2.5 py-1 text-xs font-medium text-charcoal">
                                     {formatDay(request.startDate)} –{" "}
                                     {formatDay(request.endDate)} · {request.days} day
                                     {request.days === 1 ? "" : "s"}
@@ -142,49 +304,53 @@ export function LeaveRequestsSection() {
 
                             <p className="mt-2 text-xs text-muted">
                                 Requested {formatDateTime(request.requestedAt)}
-                                {request.reason ? ` · ${request.reason}` : ""}
+                                {request.reason ? ` · Reason: "${request.reason}"` : ""}
                             </p>
 
                             {request.decisionNote && (
                                 <p
-                                    className={`mt-1 text-xs ${
+                                    className={`mt-1.5 text-xs ${
                                         request.status === "rejected"
-                                            ? "text-danger"
+                                            ? "text-danger font-medium"
                                             : "text-charcoal"
                                     }`}
                                 >
-                                    {request.status === "rejected" ? "Rejected" : "Note"} —{" "}
-                                    {request.decisionNote}
+                                    {request.status === "rejected" ? "Rejection note" : "Decision note"}: {request.decisionNote}
                                 </p>
                             )}
                             {request.status === "approved" && request.decidedAt && (
-                                <p className="mt-1 text-xs text-success">
-                                    Approved {formatDateTime(request.decidedAt)} — dates
-                                    blocked.
+                                <p className="mt-1.5 text-xs text-success">
+                                    ✓ Approved on {formatDateTime(request.decidedAt)} — calendar dates are blocked.
                                 </p>
                             )}
 
                             {request.status === "pending" && (
-                                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
                                     <button
                                         type="button"
                                         onClick={() => setReviewFor(request)}
-                                        className="min-h-11 rounded-lg bg-primary-dark px-4 text-xs font-medium text-white transition-colors hover:bg-primary-press"
+                                        className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-primary-dark px-4 text-xs font-medium text-white shadow-xs transition-colors hover:bg-primary-press"
                                     >
                                         Review &amp; decide
                                     </button>
+                                    <span className="text-xs text-muted">
+                                        Checks for appointment conflicts before approval
+                                    </span>
                                 </div>
                             )}
 
                             {request.status === "approved" && (
-                                <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+                                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/70 pt-3">
                                     <button
                                         type="button"
                                         onClick={() => setRemoveFor(request)}
-                                        className="min-h-11 rounded-lg border border-danger-line px-4 text-xs font-medium text-danger transition-colors hover:bg-danger-bg"
+                                        className="inline-flex min-h-10 items-center rounded-lg border border-danger-line px-3.5 text-xs font-medium text-danger transition-colors hover:bg-danger-bg"
                                     >
                                         Remove leave
                                     </button>
+                                    <span className="text-xs text-muted">
+                                        Restores employee booking availability for these dates
+                                    </span>
                                 </div>
                             )}
                         </li>
@@ -206,16 +372,16 @@ export function LeaveRequestsSection() {
                     message={
                         <>
                             <p>
-                                This removes the approved leave for{" "}
-                                <strong>{removeFor.staffName}</strong> on{" "}
+                                Remove the approved leave for{" "}
+                                <strong>{removeFor.staffName}</strong> for{" "}
                                 <strong>
                                     {formatDay(removeFor.startDate)} –{" "}
                                     {formatDay(removeFor.endDate)}
                                 </strong>
-                                . Those dates become bookable again.
+                                ?
                             </p>
                             <p className="mt-2 text-xs text-muted">
-                                The request stays on record as cancelled.
+                                The schedule exception blocking these dates will be removed, making them bookable again for client appointments. The request record will be marked cancelled.
                             </p>
                         </>
                     }
@@ -225,13 +391,6 @@ export function LeaveRequestsSection() {
                     onConfirm={() => void removeLeave()}
                     onCancel={() => setRemoveFor(null)}
                 />
-            )}
-
-            {pendingCount > 0 && !loading && (
-                <p className="mt-3 text-xs text-warning">
-                    {pendingCount} request{pendingCount === 1 ? "" : "s"} waiting for a
-                    decision.
-                </p>
             )}
         </Card>
     );

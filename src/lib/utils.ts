@@ -89,3 +89,13 @@ export const formatScheduleLabel = (
         })
         .join(", ");
 };
+
+/** Formats minutes into hours and minutes display (e.g. "8 hrs" or "7h 30m"). */
+export const formatDuration = (minutes: number): string => {
+    if (minutes <= 0) return "0 hrs";
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (m === 0) return `${h} ${h === 1 ? "hr" : "hrs"}`;
+    if (h === 0) return `${m} min`;
+    return `${h}h ${m}m`;
+};

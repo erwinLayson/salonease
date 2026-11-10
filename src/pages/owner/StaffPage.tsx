@@ -7,46 +7,137 @@ import { toast } from "../../lib/toast";
 // UI components
 import { Card } from "../../components/ui/Card";
 import { Field } from "../../components/ui/Field";
+import { Select } from "../../components/ui/Select";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Modal } from "../../components/ui/Modal";
+import { CalendarIcon, ClockIcon, UsersIcon } from "../../components/ui/icons";
 
 // Feature components
 import { StaffForm } from "../../components/owner/StaffForm";
 import { StaffServices } from "../../components/owner/StaffServices";
 import { StaffSchedule } from "../../components/owner/StaffSchedule";
 import { IconAction } from "../../components/owner/IconAction";
+import { LeaveRequestsSection } from "../../components/owner/LeaveRequestsSection";
 
 // Icons (react-icons, Feather set)
 import { FiClock, FiEdit2, FiPower, FiTrash2 } from "react-icons/fi";
 
 // Types
-import type { DeactivationImpact, OwnerStaff } from "../../types";
+import type { DeactivationImpact, LeaveRequest, OwnerStaff } from "../../types";
 
 // Utilities
-import { formatDateTime } from "../../lib/utils";
+import { formatDateTime, formatDuration } from "../../lib/utils";
 
 const fullName = (member: OwnerStaff): string =>
     `${member.first_name} ${member.last_name}`.trim();
+
+type StaffTab = "team" | "schedules" | "leave";
 
 export default function StaffPage() {
     const [staff, setStaff] = useState<OwnerStaff[]>([]);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [search, setSearch] = useState("");
+    const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
 
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState<OwnerStaff | null>(null);
-    // The detail view lives in the URL (?detail=<id>) so other pages can
-    // deep-link straight to a staff member's Services & hours.
+
     const [searchParams, setSearchParams] = useSearchParams();
+
+    // Tab navigation (team | schedules | leave)
+    const rawTab = searchParams.get("tab") as StaffTab | null;
+    const rawStaffId = searchParams.get("staffId");
     const rawDetail = searchParams.get("detail");
-    const detailId =
-        rawDetail !== null && /^\d+$/.test(rawDetail) ? Number(rawDetail) : null;
-    const openDetail = (id: number) => {
-        setSearchParams({ detail: String(id) });
+
+    const activeTab: StaffTab = useMemo(() => {
+        if (rawTab === "schedules" || rawTab === "leave") return rawTab;
+        if (rawTab === "team") return "team";
+        if (rawDetail !== null) return "schedules";
+        return "team";
+    }, [rawTab, rawDetail]);
+
+    const initialStaffId =
+        rawStaffId && /^\d+$/.test(rawStaffId)
+            ? Number(rawStaffId)
+            : rawDetail && /^\d+$/.test(rawDetail)
+              ? Number(rawDetail)
+              : null;
+
+    const [selectedStaffId, setSelectedStaffId] = useState<number | null>(initialStaffId);
+
+    // Track unsaved changes in Schedules & Services to protect against accidental loss
+    const [hoursDirty, setHoursDirty] = useState(false);
+    const [servicesDirty, setServicesDirty] = useState(false);
+    const [pendingSwitchStaff, setPendingSwitchStaff] = useState<OwnerStaff | null>(null);
+
+    // Live KPI statistics for selected staff member in Schedules tab
+    const [scheduleStats, setScheduleStats] = useState({
+        workingDays: 0,
+        totalMinutes: 0,
+        avgDailyMinutes: 0,
+    });
+    const [servicesCount, setServicesCount] = useState({
+        assigned: 0,
+        total: 0,
+    });
+
+    const handlePendingLeaveCountChange = useCallback((count: number) => {
+        setPendingLeaveCount((prev) => (prev === count ? prev : count));
+    }, []);
+
+    const handleServicesCountChange = useCallback((assigned: number, total: number) => {
+        setServicesCount((prev) =>
+            prev.assigned === assigned && prev.total === total ? prev : { assigned, total }
+        );
+    }, []);
+
+    const handleScheduleStatsChange = useCallback(
+        (stats: { workingDays: number; totalMinutes: number; avgDailyMinutes: number }) => {
+            setScheduleStats((prev) =>
+                prev.workingDays === stats.workingDays &&
+                prev.totalMinutes === stats.totalMinutes &&
+                prev.avgDailyMinutes === stats.avgDailyMinutes
+                    ? prev
+                    : stats
+            );
+        },
+        []
+    );
+
+    const handleTabChange = (nextTab: StaffTab) => {
+        if (activeTab === "schedules" && nextTab !== "schedules" && (hoursDirty || servicesDirty)) {
+            const confirmed = window.confirm(
+                "You have unsaved schedule or service changes. Are you sure you want to leave this tab?"
+            );
+            if (!confirmed) return;
+            setHoursDirty(false);
+            setServicesDirty(false);
+        }
+
+        const nextParams: Record<string, string> = { tab: nextTab };
+        if (nextTab === "schedules" && selectedStaffId !== null) {
+            nextParams.staffId = String(selectedStaffId);
+        }
+        setSearchParams(nextParams);
+    };
+
+    const openScheduleForStaff = (id: number) => {
+        setSelectedStaffId(id);
+        setSearchParams({ tab: "schedules", staffId: String(id) });
         window.scrollTo({ top: 0 });
     };
-    const closeDetail = () => setSearchParams({});
+
+    // Safe switching between staff members with unsaved changes protection
+    const requestStaffSwitch = (targetStaff: OwnerStaff) => {
+        if (hoursDirty || servicesDirty) {
+            setPendingSwitchStaff(targetStaff);
+        } else {
+            setSelectedStaffId(targetStaff.id);
+            setSearchParams({ tab: "schedules", staffId: String(targetStaff.id) });
+        }
+    };
+
     const [pendingDeactivation, setPendingDeactivation] = useState<{
         staff: OwnerStaff;
         impact: DeactivationImpact;
@@ -62,16 +153,37 @@ export default function StaffPage() {
             });
             setStaff(res.data.data);
         } catch {
-            // The axios interceptor surfaces failures as a toast.
+            // Interceptor toast
         } finally {
             setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        // Defer to a microtask so the effect body stays synchronous-free.
         void Promise.resolve().then(reload);
     }, [reload]);
+
+    // Initial pending leave requests count for tab notification badge
+    useEffect(() => {
+        let stale = false;
+        const checkPendingLeave = async () => {
+            try {
+                const res = await api.get<{ data: LeaveRequest[] }>(
+                    "/owner/leave-requests",
+                    { params: { status: "pending" } }
+                );
+                if (!stale) {
+                    setPendingLeaveCount(res.data.data.length);
+                }
+            } catch {
+                // Interceptor toast
+            }
+        };
+        void checkPendingLeave();
+        return () => {
+            stale = true;
+        };
+    }, []);
 
     const setStatus = async (
         member: OwnerStaff,
@@ -91,8 +203,6 @@ export default function StaffPage() {
             setPendingDeactivation(null);
             await reload();
         } catch (err) {
-            // Deactivating staff with future bookings is refused with a 409
-            // warning payload — surface it for explicit confirmation.
             if (
                 !isActive &&
                 !force &&
@@ -106,7 +216,6 @@ export default function StaffPage() {
                     return;
                 }
             }
-            // Other failures surface as a toast via the interceptor.
         } finally {
             setBusy(false);
         }
@@ -118,22 +227,18 @@ export default function StaffPage() {
             await api.delete(`/owner/staff/${member.id}`);
             toast.success(`${fullName(member)} deleted.`);
             setDeleteFor(null);
-            if (detailId === member.id) {
-                closeDetail();
+            if (selectedStaffId === member.id) {
+                setSelectedStaffId(null);
             }
             await reload();
         } catch {
             // 409: appointment history blocks deletion — deactivate instead.
-            // Other failures surface as a toast via the interceptor.
         } finally {
             setBusy(false);
         }
     };
 
-    const detail = detailId === null ? null : staff.find((m) => m.id === detailId) ?? null;
-
-    // The team is small, so filtering the loaded list keeps search
-    // instant — no extra request per keystroke.
+    // Filter staff list in Team tab
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase();
         if (!term) return staff;
@@ -153,64 +258,143 @@ export default function StaffPage() {
         );
     }, [staff, search]);
 
-    // Full-page view: "Services & hours" replaces the whole staff content.
-    if (detail !== null) {
-        return (
-            <div className="grid gap-6">
-                <header>
-                    <button
-                        type="button"
-                        onClick={closeDetail}
-                        className="mb-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-charcoal transition-colors hover:bg-charcoal/5"
-                    >
-                        <span aria-hidden>←</span> Back to team
-                    </button>
-                    <h1 className="text-xl font-semibold tracking-tight">
-                        {fullName(detail)} — services &amp; hours
-                    </h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Assign the services {fullName(detail).split(" ")[0]} offers and
-                        set their working hours.
-                    </p>
-                </header>
-                <div className="grid items-start gap-6 lg:grid-cols-2">
-                    <StaffServices
-                        staffId={detail.id}
-                        staffName={fullName(detail)}
-                        onSaved={(message) => toast.success(message)}
-                    />
-                    <StaffSchedule
-                        staffId={detail.id}
-                        staffName={fullName(detail)}
-                        onSaved={(message) => toast.success(message)}
-                    />
-                </div>
-            </div>
-        );
-    }
+    // Active staff member for the Schedules tab
+    const activeScheduleStaff = useMemo(() => {
+        if (staff.length === 0) return null;
+        if (selectedStaffId !== null) {
+            const found = staff.find((m) => m.id === selectedStaffId);
+            if (found) return found;
+        }
+        return staff.find((m) => m.is_active === 1) ?? staff[0] ?? null;
+    }, [staff, selectedStaffId]);
 
     return (
         <div className="grid gap-6">
+            {/* Page Header */}
             <header className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold tracking-tight">Staff</h1>
+                    <h1 className="text-xl font-semibold tracking-tight">
+                        {activeTab === "schedules"
+                            ? "Staff Schedule"
+                            : activeTab === "leave"
+                              ? "Staff Leave Requests"
+                              : "Staff"}
+                    </h1>
                     <p className="mt-1 text-sm text-muted">
-                        Manage accounts, services and working hours.
+                        {activeTab === "schedules"
+                            ? "Manage recurring working hours and assigned services."
+                            : activeTab === "leave"
+                              ? "Review time-off requests and manage employee leave availability."
+                              : "Central employee management: accounts, recurring working schedules and leave requests."}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => {
-                        setEditing(null);
-                        setCreating((value) => !value);
-                    }}
-                    className="rounded-lg bg-primary-dark min-h-11 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-press"
-                >
-                    {creating ? "Close" : "Add staff member"}
-                </button>
+
+                {activeTab === "team" && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setEditing(null);
+                            setCreating(true);
+                        }}
+                        className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary-dark px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-press"
+                    >
+                        <svg
+                            className="h-4 w-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add staff member
+                    </button>
+                )}
             </header>
 
+            {/* Navigation Tabs */}
+            <div className="border-b border-border">
+                <nav className="-mb-px flex gap-6" aria-label="Staff module tabs">
+                    <button
+                        type="button"
+                        onClick={() => handleTabChange("team")}
+                        className={`flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors ${
+                            activeTab === "team"
+                                ? "border-primary-dark text-primary-dark font-semibold"
+                                : "border-transparent text-muted hover:border-border hover:text-charcoal"
+                        }`}
+                    >
+                        <UsersIcon />
+                        <span>Team ({staff.length})</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleTabChange("schedules")}
+                        className={`flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors ${
+                            activeTab === "schedules"
+                                ? "border-primary-dark text-primary-dark font-semibold"
+                                : "border-transparent text-muted hover:border-border hover:text-charcoal"
+                        }`}
+                    >
+                        <ClockIcon />
+                        <span>Schedules</span>
+                        {(hoursDirty || servicesDirty) && (
+                            <span className="h-2 w-2 rounded-full bg-amber-500" title="Unsaved changes" />
+                        )}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => handleTabChange("leave")}
+                        className={`flex items-center gap-2 border-b-2 pb-3 text-sm font-medium transition-colors ${
+                            activeTab === "leave"
+                                ? "border-primary-dark text-primary-dark font-semibold"
+                                : "border-transparent text-muted hover:border-border hover:text-charcoal"
+                        }`}
+                    >
+                        <CalendarIcon />
+                        <span>Leave Requests</span>
+                        {pendingLeaveCount > 0 && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+                                {pendingLeaveCount}
+                            </span>
+                        )}
+                    </button>
+                </nav>
+            </div>
 
+            {/* Confirmation Dialog for switching staff with unsaved changes */}
+            {pendingSwitchStaff !== null && (
+                <ConfirmDialog
+                    title="Discard unsaved changes?"
+                    message={
+                        <>
+                            <p>
+                                You have unsaved schedule or service changes for{" "}
+                                <strong>{activeScheduleStaff ? fullName(activeScheduleStaff) : "this employee"}</strong>.
+                            </p>
+                            <p className="mt-2 text-xs text-muted">
+                                Switching to <strong>{fullName(pendingSwitchStaff)}</strong> will discard your edits.
+                            </p>
+                        </>
+                    }
+                    confirmLabel="Discard &amp; switch"
+                    cancelLabel="Keep editing"
+                    onConfirm={() => {
+                        setHoursDirty(false);
+                        setServicesDirty(false);
+                        setSelectedStaffId(pendingSwitchStaff.id);
+                        setSearchParams({ tab: "schedules", staffId: String(pendingSwitchStaff.id) });
+                        setPendingSwitchStaff(null);
+                    }}
+                    onCancel={() => setPendingSwitchStaff(null)}
+                />
+            )}
+
+            {/* Modals & Dialogs for Team Tab */}
             {creating && (
                 <Modal
                     title="New staff member"
@@ -339,205 +523,329 @@ export default function StaffPage() {
                 />
             )}
 
-            <Card>
-                <Field
-                    label="Search"
-                    placeholder="Name, position, email or username…"
-                    value={search}
-                    onChange={setSearch}
-                />
-            </Card>
+            {/* TAB 1: TEAM */}
+            {activeTab === "team" && (
+                <>
+                    <Card>
+                        <Field
+                            label="Search team"
+                            placeholder="Search by name, position, email, phone or username…"
+                            value={search}
+                            onChange={setSearch}
+                        />
+                    </Card>
 
-            <Card title={`Team (${filtered.length})`}>
-                {loading ? (
-                    <p className="py-4 text-center text-sm text-muted">
-                        Loading…
-                    </p>
-                ) : staff.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted">
-                        No staff yet — add your first team member.
-                    </p>
-                ) : filtered.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted">
-                        No staff match “{search.trim()}”.
-                    </p>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-border">
-                                    <th
-                                        scope="col"
-                                        className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
-                                    >
-                                        Staff member
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
-                                    >
-                                        Status
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="hidden whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted md:table-cell"
-                                    >
-                                        Contact
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="hidden whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted md:table-cell"
-                                    >
-                                        Login
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted"
-                                    >
-                                        <span className="sr-only">Actions</span>
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map((member) => (
-                                    <tr
-                                        key={member.id}
-                                        className="border-b border-border transition-colors last:border-b-0 hover:bg-charcoal/5"
-                                    >
-                                        <td className="whitespace-nowrap px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div>
-                                                    <p className="font-medium text-charcoal">
-                                                        {fullName(member)}
-                                                    </p>
-                                                    {member.position && (
-                                                        <p className="mt-0.5 text-xs text-muted">
-                                                            {member.position}
+                    <Card title={`Team Members (${filtered.length})`}>
+                        {loading ? (
+                            <p className="py-6 text-center text-sm text-muted">
+                                Loading team directory…
+                            </p>
+                        ) : staff.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-sm font-medium">No staff members yet</p>
+                                <p className="mt-1 text-xs text-muted">
+                                    Add your first team member to manage their services and schedules.
+                                </p>
+                            </div>
+                        ) : filtered.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-sm font-medium">
+                                    No staff match “{search.trim()}”
+                                </p>
+                                <p className="mt-1 text-xs text-muted">
+                                    Try a different name, role or username.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b border-border">
+                                            <th
+                                                scope="col"
+                                                className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                                            >
+                                                Staff member
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted"
+                                            >
+                                                Status
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="hidden whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted md:table-cell"
+                                            >
+                                                Contact
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="hidden whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted md:table-cell"
+                                            >
+                                                Login
+                                            </th>
+                                            <th
+                                                scope="col"
+                                                className="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted"
+                                            >
+                                                <span className="sr-only">Actions</span>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.map((member) => (
+                                            <tr
+                                                key={member.id}
+                                                className="border-b border-border transition-colors last:border-b-0 hover:bg-charcoal/5"
+                                            >
+                                                <td className="whitespace-nowrap px-4 py-3">
+                                                    <div>
+                                                        <p className="font-medium text-charcoal">
+                                                            {fullName(member)}
                                                         </p>
-                                                    )}
-                                                    {/* Contact & login stack under the name on phones (columns hide below md). */}
-                                                    <div className="mt-1 grid gap-0.5 whitespace-normal break-words text-xs text-muted md:hidden">
-                                                        {member.email && (
-                                                            <span>{member.email}</span>
+                                                        {member.position && (
+                                                            <p className="mt-0.5 text-xs text-muted">
+                                                                {member.position}
+                                                            </p>
                                                         )}
-                                                        {member.phone && (
-                                                            <span>{member.phone}</span>
-                                                        )}
-                                                        {member.username && (
-                                                            <span>{member.username}</span>
-                                                        )}
+                                                        <div className="mt-1 grid gap-0.5 whitespace-normal break-words text-xs text-muted md:hidden">
+                                                            {member.email && <span>{member.email}</span>}
+                                                            {member.phone && <span>{member.phone}</span>}
+                                                            {member.username && <span>@{member.username}</span>}
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </td>
+                                                <td className="whitespace-nowrap px-4 py-3">
+                                                    <span
+                                                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                                            member.is_active === 1
+                                                                ? "bg-success-bg text-success"
+                                                                : "bg-charcoal/10 text-charcoal"
+                                                        }`}
+                                                    >
+                                                        {member.is_active === 1 ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 md:table-cell">
+                                                    {member.email || member.phone ? (
+                                                        <div className="grid gap-0.5 text-xs text-muted">
+                                                            {member.email && <span>{member.email}</span>}
+                                                            {member.phone && <span>{member.phone}</span>}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-muted">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted md:table-cell">
+                                                    {member.username ? `@${member.username}` : "No login account"}
+                                                </td>
+                                                <td className="whitespace-nowrap px-4 py-3">
+                                                    <div className="flex flex-wrap justify-end gap-1">
+                                                        <IconAction
+                                                            label="Edit details"
+                                                            icon={<FiEdit2 size={16} />}
+                                                            disabled={busy}
+                                                            onClick={() => {
+                                                                setCreating(false);
+                                                                setEditing(member);
+                                                            }}
+                                                        />
+                                                        <IconAction
+                                                            label="Working hours & services"
+                                                            icon={<FiClock size={16} />}
+                                                            disabled={busy}
+                                                            onClick={() => openScheduleForStaff(member.id)}
+                                                        />
+                                                        {member.is_active === 1 ? (
+                                                            <IconAction
+                                                                label="Deactivate"
+                                                                icon={<FiPower size={16} />}
+                                                                disabled={busy}
+                                                                onClick={() => setDeactivateFor(member)}
+                                                            />
+                                                        ) : (
+                                                            <IconAction
+                                                                label="Activate"
+                                                                icon={<FiPower size={16} />}
+                                                                disabled={busy}
+                                                                onClick={() => void setStatus(member, true)}
+                                                            />
+                                                        )}
+                                                        <IconAction
+                                                            label="Delete"
+                                                            variant="danger"
+                                                            icon={<FiTrash2 size={16} />}
+                                                            disabled={busy}
+                                                            onClick={() => setDeleteFor(member)}
+                                                        />
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </Card>
+                </>
+            )}
+
+            {/* TAB 2: SCHEDULES & SERVICES WORKSPACE */}
+            {activeTab === "schedules" && (
+                <>
+                    {staff.length === 0 ? (
+                        <Card>
+                            <div className="py-8 text-center">
+                                <p className="text-sm font-medium">No staff members found</p>
+                                <p className="mt-1 text-xs text-muted">
+                                    Please add a staff member in the Team tab before setting working schedules.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => handleTabChange("team")}
+                                    className="mt-4 inline-flex min-h-10 items-center rounded-lg border border-border px-4 text-xs font-medium text-charcoal hover:bg-charcoal/5"
+                                >
+                                    Go to Team
+                                </button>
+                            </div>
+                        </Card>
+                    ) : !activeScheduleStaff ? (
+                        <Card>
+                            <p className="py-6 text-center text-sm text-muted">
+                                Select a staff member to view and manage their schedule.
+                            </p>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-6">
+                            {/* Staff Member Selector & Schedule KPI Summary Bar */}
+                            <Card>
+                                <div className="space-y-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/70 pb-3">
+                                        <div className="w-full sm:w-80">
+                                            <Select
+                                                label="Selected team member"
+                                                value={String(activeScheduleStaff.id)}
+                                                onChange={(val) => {
+                                                    const target = staff.find((m) => m.id === Number(val));
+                                                    if (target) {
+                                                        requestStaffSwitch(target);
+                                                    }
+                                                }}
+                                                options={staff.map((m) => ({
+                                                    value: String(m.id),
+                                                    label: `${fullName(m)}${m.position ? ` · ${m.position}` : ""}${m.is_active === 1 ? "" : " (Inactive)"}`,
+                                                }))}
+                                            />
+                                        </div>
+
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                                <p className="text-sm font-semibold text-charcoal">
+                                                    {fullName(activeScheduleStaff)}
+                                                </p>
+                                                <p className="text-xs text-muted">
+                                                    {activeScheduleStaff.position || "Staff"} ·{" "}
+                                                    {activeScheduleStaff.email || activeScheduleStaff.phone || "No contact info"}
+                                                </p>
                                             </div>
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-3">
                                             <span
-                                                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                    member.is_active === 1
+                                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                                                    activeScheduleStaff.is_active === 1
                                                         ? "bg-success-bg text-success"
                                                         : "bg-charcoal/10 text-charcoal"
                                                 }`}
                                             >
-                                                {member.is_active === 1
-                                                    ? "Active"
-                                                    : "Inactive"}
+                                                {activeScheduleStaff.is_active === 1 ? "Active" : "Inactive"}
                                             </span>
-                                        </td>
-                                        <td className="hidden whitespace-nowrap px-4 py-3 md:table-cell">
-                                            {member.email || member.phone ? (
-                                                <div className="grid gap-0.5 text-xs text-muted">
-                                                    {member.email && (
-                                                        <span>
-                                                            {member.email}
-                                                        </span>
-                                                    )}
-                                                    {member.phone && (
-                                                        <span>
-                                                            {member.phone}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-xs text-muted">
-                                                    —
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted md:table-cell">
-                                            {member.username ??
-                                                "No login account"}
-                                        </td>
-                                        <td className="whitespace-nowrap px-4 py-3">
-                                            <div className="flex flex-wrap justify-end gap-1">
-                                                <IconAction
-                                                    label="Edit"
-                                                    icon={
-                                                        <FiEdit2 size={16} />
-                                                    }
-                                                    disabled={busy}
-                                                    onClick={() => {
-                                                        setCreating(false);
-                                                        setEditing(member);
-                                                    }}
-                                                />
-                                                <IconAction
-                                                    label="Services & hours"
-                                                    icon={
-                                                        <FiClock size={16} />
-                                                    }
-                                                    disabled={busy}
-                                                    onClick={() =>
-                                                        openDetail(member.id)
-                                                    }
-                                                />
-                                                {member.is_active === 1 ? (
-                                                    <IconAction
-                                                        label="Deactivate"
-                                                        icon={
-                                                            <FiPower size={16} />
-                                                        }
-                                                        disabled={busy}
-                                                        onClick={() =>
-                                                            setDeactivateFor(
-                                                                member
-                                                            )
-                                                        }
-                                                    />
-                                                ) : (
-                                                    <IconAction
-                                                        label="Activate"
-                                                        icon={
-                                                            <FiPower size={16} />
-                                                        }
-                                                        disabled={busy}
-                                                        onClick={() =>
-                                                            void setStatus(
-                                                                member,
-                                                                true
-                                                            )
-                                                        }
-                                                    />
-                                                )}
-                                                <IconAction
-                                                    label="Delete"
-                                                    variant="danger"
-                                                    icon={
-                                                        <FiTrash2 size={16} />
-                                                    }
-                                                    disabled={busy}
-                                                    onClick={() =>
-                                                        setDeleteFor(member)
-                                                    }
-                                                />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </Card>
+                                        </div>
+                                    </div>
+
+                                    {/* Summary Stats Strip */}
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                                        <div className="rounded-xl border border-border/70 bg-charcoal/[0.02] p-3 text-center sm:text-left">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                                Weekly Hours
+                                            </p>
+                                            <p className="mt-1 text-lg font-bold text-charcoal">
+                                                {formatDuration(scheduleStats.totalMinutes)}
+                                            </p>
+                                            <p className="text-[10px] text-muted">Total scheduled</p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-border/70 bg-charcoal/[0.02] p-3 text-center sm:text-left">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                                Working Days
+                                            </p>
+                                            <p className="mt-1 text-lg font-bold text-charcoal">
+                                                {scheduleStats.workingDays} / 7 days
+                                            </p>
+                                            <p className="text-[10px] text-muted">
+                                                {7 - scheduleStats.workingDays} day{7 - scheduleStats.workingDays === 1 ? "" : "s"} off
+                                            </p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-border/70 bg-charcoal/[0.02] p-3 text-center sm:text-left">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                                Daily Average
+                                            </p>
+                                            <p className="mt-1 text-lg font-bold text-charcoal">
+                                                {formatDuration(scheduleStats.avgDailyMinutes)}
+                                            </p>
+                                            <p className="text-[10px] text-muted">Per working day</p>
+                                        </div>
+
+                                        <div className="rounded-xl border border-border/70 bg-charcoal/[0.02] p-3 text-center sm:text-left">
+                                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                                Services Assigned
+                                            </p>
+                                            <p className="mt-1 text-lg font-bold text-charcoal">
+                                                {servicesCount.assigned}
+                                            </p>
+                                            <p className="text-[10px] text-muted">
+                                                Of {servicesCount.total} active services
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+
+                            {/* Main Content: Working Hours (larger width) & Assigned Services */}
+                            <div className="grid items-start gap-6 lg:grid-cols-12">
+                                <div className="lg:col-span-7">
+                                    <StaffSchedule
+                                        key={`sched-${activeScheduleStaff.id}`}
+                                        staffId={activeScheduleStaff.id}
+                                        staffName={fullName(activeScheduleStaff)}
+                                        onSaved={(message) => toast.success(message)}
+                                        onDirtyChange={setHoursDirty}
+                                        onStatsChange={handleScheduleStatsChange}
+                                    />
+                                </div>
+
+                                <div className="lg:col-span-5">
+                                    <StaffServices
+                                        key={`serv-${activeScheduleStaff.id}`}
+                                        staffId={activeScheduleStaff.id}
+                                        staffName={fullName(activeScheduleStaff)}
+                                        onSaved={(message) => toast.success(message)}
+                                        onDirtyChange={setServicesDirty}
+                                        onCountChange={handleServicesCountChange}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* TAB 3: LEAVE REQUESTS */}
+            {activeTab === "leave" && (
+                <LeaveRequestsSection
+                    staffList={staff}
+                    onPendingCountChange={handlePendingLeaveCountChange}
+                />
+            )}
         </div>
     );
 }

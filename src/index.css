@@ -85,6 +85,22 @@ body {
   animation: marquee 30s linear infinite;
 }
 
+/* Toast auto-dismiss countdown progress bar */
+@keyframes toast-shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.animate-toast-shrink {
+  animation-name: toast-shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Pause the loop while the team strip is hovered. */
 .team-marquee:hover {
   animation-play-state: paused;

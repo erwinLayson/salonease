@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import {
-    BoxIcon,
     CalendarIcon,
     EventIcon,
     ClockIcon,
@@ -34,11 +33,10 @@ export function roleNavItems(role: Role): SidebarItem[] {
               { href: "/owner/staff", label: "Staff", icon: <UsersIcon /> },
               {
                   href: "/owner/services",
-                  label: "Services",
+                  label: "Services & Inventory",
                   icon: <ScissorsIcon />,
               },
               { href: "/owner/events", label: "Events", icon: <EventIcon /> },
-              { href: "/owner/inventory", label: "Inventory", icon: <BoxIcon /> },
               {
                   href: "/owner/transactions",
                   label: "Transactions",
