@@ -15,6 +15,7 @@ export function Modal(props: {
     onClose: () => void;
     children: ReactNode;
     wide?: boolean;
+    extraWide?: boolean;
 }) {
     const { onClose } = props;
     const dialogRef = useRef<HTMLDivElement>(null);
@@ -97,7 +98,7 @@ export function Modal(props: {
                 tabIndex={-1}
                 onKeyDown={trapFocus}
                 className={`no-scrollbar relative max-h-[calc(100svh-2rem)] w-full ${
-                    props.wide ? "max-w-2xl" : "max-w-lg"
+                    props.extraWide ? "max-w-4xl" : props.wide ? "max-w-2xl" : "max-w-lg"
                 } overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-lift`}
             >
                 <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">

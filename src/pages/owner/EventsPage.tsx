@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "../../lib/api";
 import { toast } from "../../lib/toast";
@@ -9,6 +9,22 @@ import { Card } from "../../components/ui/Card";
 import { Field } from "../../components/ui/Field";
 import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
+
+import {
+    FiArrowRight,
+    FiCalendar,
+    FiEdit2,
+    FiGrid,
+    FiList,
+    FiMail,
+    FiMapPin,
+    FiPackage,
+    FiPhone,
+    FiSearch,
+    FiTruck,
+    FiUsers,
+    FiX,
+} from "react-icons/fi";
 
 import type {
     EventAssignmentRole,
@@ -26,6 +42,14 @@ const STATUS_LABELS: Record<EventStatus, string> = {
     in_progress: "In progress",
     completed: "Completed",
     cancelled: "Cancelled",
+};
+
+const STATUS_BADGE_CLASSES: Record<EventStatus, string> = {
+    inquiry: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+    confirmed: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+    in_progress: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800",
+    completed: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800",
+    cancelled: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800",
 };
 
 const TYPE_LABELS: Record<EventType, string> = {
@@ -143,6 +167,10 @@ export default function EventsPage() {
     const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
     const [busy, setBusy] = useState(false);
 
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<EventStatus | "all">("all");
+    const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+
     const [venueOpen, setVenueOpen] = useState(false);
     const [venueForm, setVenueForm] = useState({
         name: "",
@@ -217,6 +245,33 @@ export default function EventsPage() {
             .catch(() => {});
     }, [reloadVenues]);
 
+    const metrics = useMemo(() => {
+        const total = events.length;
+        const confirmed = events.filter((e) => e.status === "confirmed").length;
+        const inProgress = events.filter((e) => e.status === "in_progress").length;
+        const completed = events.filter((e) => e.status === "completed").length;
+        const inquiry = events.filter((e) => e.status === "inquiry").length;
+        const totalRevenue = events
+            .filter((e) => e.status !== "cancelled")
+            .reduce((sum, e) => sum + e.total, 0);
+        return { total, confirmed, inProgress, completed, inquiry, totalRevenue };
+    }, [events]);
+
+    const filteredEvents = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        return events.filter((event) => {
+            if (statusFilter !== "all" && event.status !== statusFilter) return false;
+            if (!term) return true;
+            const refMatch = event.reference.toLowerCase().includes(term);
+            const titleMatch = event.title.toLowerCase().includes(term);
+            const customerMatch = event.customer.name.toLowerCase().includes(term);
+            const venueNameMatch = event.venue?.name?.toLowerCase().includes(term) ?? false;
+            const venueAddrMatch = event.venue?.address?.toLowerCase().includes(term) ?? false;
+            const typeMatch = TYPE_LABELS[event.eventType]?.toLowerCase().includes(term) ?? false;
+            return refMatch || titleMatch || customerMatch || venueNameMatch || venueAddrMatch || typeMatch;
+        });
+    }, [events, search, statusFilter]);
+
     const openCreate = () => {
         setForm(emptyForm());
         setServiceQty({});
@@ -259,6 +314,7 @@ export default function EventsPage() {
                         : String(assignment.commissionSharePercent),
             }))
         );
+        setSelected(null);
         setEditing(event);
     };
 
@@ -374,6 +430,7 @@ export default function EventsPage() {
             );
             setSelected(res.data.data);
             await reload();
+            toast.success(`Event status updated to ${STATUS_LABELS[status]}.`);
         } catch {
             // toast via interceptor
         }
@@ -522,14 +579,257 @@ export default function EventsPage() {
                 </div>
             </header>
 
-            <Card title="Event calendar">
-                {loading ? (
-                    <p className="py-8 text-center text-sm text-muted">Loading events…</p>
-                ) : events.length === 0 ? (
-                    <p className="py-10 text-center text-sm text-muted">
-                        No events yet. Create a wedding or on-location assignment to get started.
+            {/* KPI Summary Cards */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+                    <span className="text-xs font-medium text-muted">Total Events</span>
+                    <p className="mt-1 text-2xl font-bold text-charcoal">{metrics.total}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+                    <span className="text-xs font-medium text-muted">Confirmed</span>
+                    <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        {metrics.confirmed}
                     </p>
-                ) : (
+                </div>
+                <div className="rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+                    <span className="text-xs font-medium text-muted">In Progress</span>
+                    <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+                        {metrics.inProgress}
+                    </p>
+                </div>
+                <div className="rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+                    <span className="text-xs font-medium text-muted">Completed</span>
+                    <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {metrics.completed}
+                    </p>
+                </div>
+                <div className="col-span-2 sm:col-span-1 rounded-xl border border-border bg-surface p-3.5 shadow-xs">
+                    <span className="text-xs font-medium text-muted">Total Revenue</span>
+                    <p className="mt-1 text-2xl font-bold text-primary-dark">
+                        {peso(metrics.totalRevenue)}
+                    </p>
+                </div>
+            </div>
+
+            {/* Search, Filter & View Controls */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="relative flex-1 max-w-md">
+                    <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Search events, clients, venues, or reference..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-surface pl-10 pr-9 py-2 text-sm text-charcoal placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={() => setSearch("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal p-1"
+                            aria-label="Clear search"
+                        >
+                            <FiX className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Status Tabs */}
+                    <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-charcoal/[0.02] p-1 text-xs">
+                        {(
+                            [
+                                { key: "all", label: `All (${metrics.total})` },
+                                { key: "confirmed", label: `Confirmed (${metrics.confirmed})` },
+                                { key: "in_progress", label: `In progress (${metrics.inProgress})` },
+                                { key: "completed", label: `Completed (${metrics.completed})` },
+                                { key: "inquiry", label: `Inquiry (${metrics.inquiry})` },
+                            ] as const
+                        ).map((tab) => (
+                            <button
+                                key={tab.key}
+                                type="button"
+                                onClick={() => setStatusFilter(tab.key)}
+                                className={`rounded-lg px-2.5 py-1 font-medium transition-colors ${
+                                    statusFilter === tab.key
+                                        ? "bg-surface text-charcoal shadow-xs border border-border"
+                                        : "text-muted hover:text-charcoal"
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* View Switcher */}
+                    <div className="flex items-center gap-1 rounded-xl border border-border bg-charcoal/[0.02] p-1">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("cards")}
+                            title="Cards view"
+                            className={`rounded-lg p-1.5 transition-colors ${
+                                viewMode === "cards"
+                                    ? "bg-surface text-primary shadow-xs border border-border"
+                                    : "text-muted hover:text-charcoal"
+                            }`}
+                        >
+                            <FiGrid className="h-4 w-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("table")}
+                            title="Table view"
+                            className={`rounded-lg p-1.5 transition-colors ${
+                                viewMode === "table"
+                                    ? "bg-surface text-primary shadow-xs border border-border"
+                                    : "text-muted hover:text-charcoal"
+                            }`}
+                        >
+                            <FiList className="h-4 w-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Events Main Content */}
+            {loading ? (
+                <div className="rounded-2xl border border-border bg-surface p-12 text-center text-sm text-muted">
+                    Loading events…
+                </div>
+            ) : filteredEvents.length === 0 ? (
+                <div className="rounded-2xl border border-border bg-surface p-12 text-center">
+                    <p className="text-base font-semibold text-charcoal">No events found</p>
+                    <p className="mt-1 text-sm text-muted">
+                        {search || statusFilter !== "all"
+                            ? "Try adjusting your search query or status filter."
+                            : "Create your first wedding or on-location styling assignment."}
+                    </p>
+                    <div className="mt-4 flex justify-center gap-2">
+                        {search || statusFilter !== "all" ? (
+                            <Button
+                                variant="secondary"
+                                onClick={() => {
+                                    setSearch("");
+                                    setStatusFilter("all");
+                                }}
+                            >
+                                Reset filters
+                            </Button>
+                        ) : (
+                            <Button onClick={openCreate}>Create event</Button>
+                        )}
+                    </div>
+                </div>
+            ) : viewMode === "cards" ? (
+                /* Cards View */
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {filteredEvents.map((event) => {
+                        return (
+                            <div
+                                key={event.id}
+                                onClick={() => void openDetail(event)}
+                                className="group relative flex flex-col justify-between rounded-2xl border border-border bg-surface p-4 shadow-xs transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
+                            >
+                                <div>
+                                    <div className="mb-2.5 flex items-center justify-between gap-2">
+                                        <span className="rounded-md border border-border/60 bg-charcoal/[0.04] px-2 py-0.5 font-mono text-xs font-semibold text-charcoal/80">
+                                            {event.reference}
+                                        </span>
+                                        <span
+                                            className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                                                STATUS_BADGE_CLASSES[event.status]
+                                            }`}
+                                        >
+                                            {STATUS_LABELS[event.status]}
+                                        </span>
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <h3 className="line-clamp-1 text-base font-semibold text-charcoal transition-colors group-hover:text-primary">
+                                            {event.title}
+                                        </h3>
+                                        <span className="mt-0.5 inline-block text-xs font-medium text-muted">
+                                            {TYPE_LABELS[event.eventType]}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2 border-t border-border/50 pt-3 text-xs text-charcoal/80">
+                                        <div className="flex items-center gap-2 text-muted">
+                                            <FiUsers className="h-3.5 w-3.5 shrink-0 text-muted" />
+                                            <span className="truncate font-medium text-charcoal">
+                                                {event.customer.name}
+                                            </span>
+                                            {event.customer.phone && (
+                                                <span className="text-muted">· {event.customer.phone}</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-2 text-muted">
+                                            <FiCalendar className="h-3.5 w-3.5 shrink-0 text-muted" />
+                                            <span className="truncate">
+                                                {formatDateTime(event.startAt)}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-start gap-2 text-muted">
+                                            <FiMapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate font-medium text-charcoal">
+                                                    {event.venue?.name || "To be confirmed"}
+                                                </p>
+                                                {event.venue?.address && (
+                                                    <p
+                                                        className="truncate text-[11px] text-muted"
+                                                        title={event.venue.address}
+                                                    >
+                                                        {event.venue.address}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {event.assignments && event.assignments.length > 0 && (
+                                            <div className="flex items-center gap-1.5 pt-1 text-[11px] text-muted">
+                                                <span className="font-medium text-charcoal">Team:</span>
+                                                <span className="truncate">
+                                                    {event.assignments.find((a) => a.role === "lead")?.staffName ??
+                                                        event.assignments[0]?.staffName}
+                                                    {event.assignments.length > 1 &&
+                                                        ` +${event.assignments.length - 1} crew`}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex items-center justify-between border-t border-border/60 pt-3">
+                                    <div>
+                                        <span className="block text-[10px] font-semibold uppercase text-muted">
+                                            Total
+                                        </span>
+                                        <span className="text-sm font-bold text-primary-dark">
+                                            {peso(event.total)}
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            void openDetail(event);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal transition-colors hover:border-primary hover:bg-primary-light/10 hover:text-primary-dark"
+                                    >
+                                        <span>Open</span>
+                                        <FiArrowRight className="h-3 w-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                /* Table View */
+                <Card>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
@@ -544,16 +844,19 @@ export default function EventsPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {events.map((event) => (
-                                    <tr key={event.id} className="border-b border-border/70">
-                                        <td className="px-3 py-3 font-mono text-xs">
+                                {filteredEvents.map((event) => (
+                                    <tr
+                                        key={event.id}
+                                        onClick={() => void openDetail(event)}
+                                        className="border-b border-border/70 hover:bg-charcoal/[0.02] cursor-pointer transition-colors"
+                                    >
+                                        <td className="px-3 py-3 font-mono text-xs font-semibold">
                                             {event.reference}
                                         </td>
                                         <td className="px-3 py-3">
                                             <p className="font-medium">{event.title}</p>
                                             <p className="text-xs text-muted">
-                                                {TYPE_LABELS[event.eventType]} ·{" "}
-                                                {event.customer.name}
+                                                {TYPE_LABELS[event.eventType]} · {event.customer.name}
                                             </p>
                                         </td>
                                         <td className="px-3 py-3 text-xs">
@@ -571,18 +874,28 @@ export default function EventsPage() {
                                             )}
                                         </td>
                                         <td className="px-3 py-3">
-                                            <span className="rounded-full bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark">
+                                            <span
+                                                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                                                    STATUS_BADGE_CLASSES[event.status]
+                                                }`}
+                                            >
                                                 {STATUS_LABELS[event.status]}
                                             </span>
                                         </td>
-                                        <td className="px-3 py-3">{peso(event.total)}</td>
-                                        <td className="px-3 py-3">
+                                        <td className="px-3 py-3 font-semibold text-charcoal">
+                                            {peso(event.total)}
+                                        </td>
+                                        <td className="px-3 py-3 text-right">
                                             <button
                                                 type="button"
-                                                onClick={() => void openDetail(event)}
-                                                className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-charcoal/5"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    void openDetail(event);
+                                                }}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary-dark hover:bg-primary-light/10"
                                             >
-                                                Open
+                                                <span>Open</span>
+                                                <FiArrowRight className="h-3 w-3" />
                                             </button>
                                         </td>
                                     </tr>
@@ -590,199 +903,382 @@ export default function EventsPage() {
                             </tbody>
                         </table>
                     </div>
-                )}
-            </Card>
+                </Card>
+            )}
 
-            {selected && (
-                <Card
+            {/* Event Details Modal */}
+            {selected && !itineraryOpen && !kitOpen && (
+                <Modal
                     title={`${selected.title} · ${selected.reference}`}
-                    actions={
-                        <div className="flex flex-wrap gap-1.5">
-                            {nextStatuses(selected.status).map((status) => (
-                                <button
-                                    key={status}
-                                    type="button"
-                                    onClick={() => void changeStatus(selected, status)}
-                                    className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-charcoal/5"
-                                >
-                                    {STATUS_LABELS[status]}
-                                </button>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={() => openEdit(selected)}
-                                className="rounded-lg border border-primary px-2 py-1 text-xs text-primary-dark hover:bg-primary-light/30"
-                            >
-                                Edit
-                            </button>
-                        </div>
-                    }
+                    onClose={() => setSelected(null)}
+                    extraWide
                 >
-                    <div className="grid gap-5 lg:grid-cols-2">
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                                Details
-                            </h3>
-                            <dl className="space-y-1.5 text-sm">
-                                <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Customer</dt>
-                                    <dd>{selected.customer.name}</dd>
-                                </div>
-                                <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Venue / Location</dt>
-                                    <dd className="font-medium text-right">{selected.venue?.name ?? "To be confirmed"}</dd>
-                                </div>
-                                {selected.venue?.address && (
-                                    <div className="flex justify-between gap-3">
-                                        <dt className="text-muted">Address</dt>
-                                        <dd className="max-w-[260px] text-right text-xs text-muted">{selected.venue.address}</dd>
-                                    </div>
-                                )}
-                                <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Event window</dt>
-                                    <dd>
-                                        {formatDateTime(selected.startAt)} –{" "}
-                                        {formatDateTime(selected.endAt)}
-                                    </dd>
-                                </div>
-                                <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Travel buffer</dt>
-                                    <dd>{selected.travelBufferMinutes} min</dd>
-                                </div>
-                                <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Total</dt>
-                                    <dd className="font-semibold">{peso(selected.total)}</dd>
-                                </div>
-                            </dl>
+                    <div className="space-y-6">
+                        {/* Status Strip & Quick Action Transitions */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-charcoal/[0.02] p-3.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span
+                                    className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                                        STATUS_BADGE_CLASSES[selected.status]
+                                    }`}
+                                >
+                                    {STATUS_LABELS[selected.status]}
+                                </span>
+                                <span className="rounded-full bg-charcoal/[0.06] px-2.5 py-0.5 text-xs font-medium text-charcoal">
+                                    {TYPE_LABELS[selected.eventType]}
+                                </span>
+                                <span className="text-xs text-muted">
+                                    Window: {formatDateTime(selected.startAt)} –{" "}
+                                    {formatDateTime(selected.endAt)}
+                                </span>
+                            </div>
 
-                            <h3 className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-muted">
-                                Services
-                            </h3>
-                            <ul className="space-y-1 text-sm">
-                                {selected.services.map((line) => (
-                                    <li key={line.serviceId} className="flex justify-between gap-3">
-                                        <span>
-                                            {line.name} × {line.quantity}
-                                        </span>
-                                        <span>{peso(line.price * line.quantity)}</span>
-                                    </li>
+                            <div className="flex flex-wrap items-center gap-2">
+                                {nextStatuses(selected.status).map((status) => (
+                                    <button
+                                        key={status}
+                                        type="button"
+                                        onClick={() => void changeStatus(selected, status)}
+                                        className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
+                                            status === "completed"
+                                                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                                : status === "confirmed"
+                                                  ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                                                  : status === "in_progress"
+                                                    ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                                    : "border-border text-muted hover:bg-charcoal/5 hover:text-charcoal"
+                                        }`}
+                                    >
+                                        Mark as {STATUS_LABELS[status]}
+                                    </button>
                                 ))}
-                            </ul>
-                        </section>
+                                <button
+                                    type="button"
+                                    onClick={() => openEdit(selected)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-primary px-2.5 py-1 text-xs font-medium text-primary-dark transition-colors hover:bg-primary-light/20"
+                                >
+                                    <FiEdit2 className="h-3 w-3" />
+                                    <span>Edit</span>
+                                </button>
+                            </div>
+                        </div>
 
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                                Staff assignments
-                            </h3>
-                            {selected.assignments.length === 0 ? (
-                                <p className="text-sm text-muted">No staff assigned.</p>
-                            ) : (
-                                <ul className="space-y-2">
-                                    {selected.assignments.map((assignment) => (
-                                        <li
-                                            key={assignment.id}
-                                            className="rounded-xl border border-border p-3 text-sm"
-                                        >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="font-medium">
-                                                    {assignment.staffName}
-                                                </span>
-                                                <span className="text-xs capitalize text-muted">
-                                                    {assignment.role}
+                        {/* Customer & Location & Services 2-Column Grid */}
+                        <div className="grid gap-5 md:grid-cols-2">
+                            {/* Column 1: Customer & Venue */}
+                            <div className="space-y-4 rounded-xl border border-border p-4">
+                                <div className="border-b border-border/60 pb-2">
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                        Customer & Venue Details
+                                    </h3>
+                                </div>
+
+                                <div className="space-y-3 text-sm">
+                                    <div>
+                                        <span className="block text-xs text-muted">Customer</span>
+                                        <p className="font-semibold text-charcoal">
+                                            {selected.customer.name}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted">
+                                            {selected.customer.phone && (
+                                                <a
+                                                    href={`tel:${selected.customer.phone}`}
+                                                    className="inline-flex items-center gap-1 hover:text-primary hover:underline"
+                                                >
+                                                    <FiPhone className="h-3 w-3" />
+                                                    {selected.customer.phone}
+                                                </a>
+                                            )}
+                                            {selected.customer.email && (
+                                                <a
+                                                    href={`mailto:${selected.customer.email}`}
+                                                    className="inline-flex items-center gap-1 hover:text-primary hover:underline"
+                                                >
+                                                    <FiMail className="h-3 w-3" />
+                                                    {selected.customer.email}
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-border/40 pt-2">
+                                        <span className="block text-xs text-muted">
+                                            Venue / Location
+                                        </span>
+                                        <p className="font-medium text-charcoal">
+                                            {selected.venue?.name || "To be confirmed"}
+                                        </p>
+                                        {selected.venue?.address && (
+                                            <p className="mt-0.5 flex items-start gap-1 text-xs text-muted">
+                                                <FiMapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                                <span>{selected.venue.address}</span>
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2 border-t border-border/40 pt-2 text-xs">
+                                        <div>
+                                            <span className="block text-muted">Travel buffer</span>
+                                            <span className="font-medium text-charcoal">
+                                                {selected.travelBufferMinutes} minutes
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-muted">Event Type</span>
+                                            <span className="font-medium text-charcoal">
+                                                {TYPE_LABELS[selected.eventType]}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {selected.notes && (
+                                        <div className="border-t border-border/40 pt-2">
+                                            <span className="block text-xs text-muted">Notes</span>
+                                            <p className="rounded-lg border border-border/60 bg-charcoal/[0.02] p-2 text-xs italic text-charcoal/80">
+                                                "{selected.notes}"
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Column 2: Services & Pricing */}
+                            <div className="flex flex-col justify-between rounded-xl border border-border p-4">
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2">
+                                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                            Services Booked
+                                        </h3>
+                                        <span className="text-xs font-medium text-muted">
+                                            {selected.services.length}{" "}
+                                            {selected.services.length === 1 ? "service" : "services"}
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        {selected.services.map((line) => (
+                                            <div
+                                                key={line.serviceId}
+                                                className="flex items-center justify-between gap-3 border-b border-border/30 py-1 text-sm last:border-0"
+                                            >
+                                                <div>
+                                                    <p className="font-medium text-charcoal">{line.name}</p>
+                                                    <p className="text-xs text-muted">
+                                                        {peso(line.price)} × {line.quantity}
+                                                    </p>
+                                                </div>
+                                                <span className="font-medium text-charcoal">
+                                                    {peso(line.price * line.quantity)}
                                                 </span>
                                             </div>
-                                            <p className="mt-1 text-xs text-muted">
-                                                Call {formatDateTime(assignment.callTime)} · Release{" "}
-                                                {formatDateTime(assignment.releaseTime)}
-                                                {assignment.travelRequired
-                                                    ? " · travel required"
-                                                    : " · no travel"}
-                                            </p>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                                        ))}
+                                    </div>
+                                </div>
 
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => openItinerary(selected)}
-                                >
-                                    Travel itinerary
-                                </Button>
-                                <Button variant="secondary" onClick={() => openKit(selected)}>
-                                    Event kit
-                                </Button>
+                                <div className="-mx-4 -mb-4 mt-4 flex items-center justify-between rounded-b-xl border-t border-border bg-primary-light/10 p-4">
+                                    <span className="text-sm font-semibold text-charcoal">
+                                        Total Package
+                                    </span>
+                                    <span className="text-base font-bold text-primary-dark">
+                                        {peso(selected.total)}
+                                    </span>
+                                </div>
                             </div>
-                        </section>
-                    </div>
+                        </div>
 
-                    <div className="mt-5 grid gap-5 lg:grid-cols-2">
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                                Itinerary
-                            </h3>
-                            {selected.itinerary.length === 0 ? (
-                                <p className="text-sm text-muted">
-                                    No travel segments. Add them before the event.
-                                </p>
-                            ) : (
-                                <ol className="space-y-2 text-sm">
-                                    {selected.itinerary.map((segment) => (
-                                        <li
-                                            key={segment.id}
-                                            className="rounded-xl border border-border p-3"
-                                        >
-                                            <p className="font-medium">
-                                                {segment.from} → {segment.to}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted">
-                                                {formatDateTime(segment.departAt)} –{" "}
-                                                {formatDateTime(segment.arriveAt)} ·{" "}
-                                                {segment.staffName ?? "Whole team"}
-                                            </p>
-                                        </li>
-                                    ))}
-                                </ol>
-                            )}
-                        </section>
-
-                        <section>
-                            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
-                                Event kit
-                            </h3>
-                            {selected.supplies.length === 0 ? (
-                                <p className="text-sm text-muted">No supplies planned.</p>
-                            ) : (
-                                <ul className="space-y-1.5 text-sm">
-                                    {selected.supplies.map((line) => (
-                                        <li
-                                            key={line.supplyId}
-                                            className="flex items-center justify-between gap-2"
-                                        >
-                                            <span>
-                                                {line.name} · planned {line.plannedQuantity}{" "}
-                                                {line.unit}
-                                            </span>
-                                            <span className="text-xs text-muted">
-                                                issued {line.issuedQuantity} · {line.status}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                            <div className="mt-3">
-                                <Button
-                                    variant="secondary"
-                                    onClick={() => void issueKit()}
-                                    loading={busy}
+                        {/* Staff Assignments Section */}
+                        <div className="rounded-xl border border-border p-4">
+                            <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2">
+                                <div className="flex items-center gap-2">
+                                    <FiUsers className="h-4 w-4 text-primary" />
+                                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                        Assigned Staff Team ({selected.assignments.length})
+                                    </h3>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => openEdit(selected)}
+                                    className="text-xs font-medium text-primary-dark hover:underline"
                                 >
-                                    Issue kit
-                                </Button>
+                                    Edit assignments
+                                </button>
                             </div>
-                        </section>
+
+                            {selected.assignments.length === 0 ? (
+                                <p className="py-2 text-sm text-muted">No staff assigned yet.</p>
+                            ) : (
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    {selected.assignments.map((assignment) => (
+                                        <div
+                                            key={assignment.id}
+                                            className={`rounded-xl border p-3 text-sm ${
+                                                assignment.role === "lead"
+                                                    ? "border-primary/40 bg-primary-light/10"
+                                                    : "border-border bg-charcoal/[0.01]"
+                                            }`}
+                                        >
+                                            <div className="mb-1.5 flex items-center justify-between gap-2">
+                                                <span className="font-semibold text-charcoal">
+                                                    {assignment.staffName}
+                                                </span>
+                                                <span
+                                                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                                        assignment.role === "lead"
+                                                            ? "bg-primary text-white"
+                                                            : "bg-charcoal/[0.06] text-charcoal"
+                                                    }`}
+                                                >
+                                                    {ROLE_OPTIONS.find((r) => r.value === assignment.role)?.label ??
+                                                        assignment.role}
+                                                </span>
+                                            </div>
+                                            <div className="space-y-0.5 text-xs text-muted">
+                                                <p>Call: {formatDateTime(assignment.callTime)}</p>
+                                                <p>Release: {formatDateTime(assignment.releaseTime)}</p>
+                                                <p className="text-[11px]">
+                                                    {assignment.travelRequired
+                                                        ? "🚗 Travel required"
+                                                        : "🏠 On-site / No travel"}
+                                                    {assignment.commissionSharePercent !== null &&
+                                                        ` · ${assignment.commissionSharePercent}% commission`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Logistics Grid: Itinerary & Event Kit */}
+                        <div className="grid gap-5 md:grid-cols-2">
+                            {/* Travel Itinerary */}
+                            <div className="flex flex-col justify-between rounded-xl border border-border p-4">
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <FiTruck className="h-4 w-4 text-primary" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                                Travel Itinerary ({selected.itinerary.length})
+                                            </h3>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => openItinerary(selected)}
+                                            className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium hover:bg-charcoal/5"
+                                        >
+                                            Manage itinerary
+                                        </button>
+                                    </div>
+
+                                    {selected.itinerary.length === 0 ? (
+                                        <p className="py-4 text-center text-xs text-muted">
+                                            No travel segments scheduled. Click "Manage itinerary" to set up departure and arrival routes.
+                                        </p>
+                                    ) : (
+                                        <ol className="space-y-2">
+                                            {selected.itinerary.map((segment) => (
+                                                <li
+                                                    key={segment.id}
+                                                    className="rounded-lg border border-border/80 p-2.5 text-xs"
+                                                >
+                                                    <div className="flex items-center justify-between gap-2 font-medium text-charcoal">
+                                                        <span>
+                                                            {segment.from} → {segment.to}
+                                                        </span>
+                                                        <span className="rounded bg-charcoal/[0.05] px-2 py-0.5 text-[11px] capitalize text-muted">
+                                                            {MODE_OPTIONS.find((m) => m.value === segment.mode)?.label ??
+                                                                segment.mode}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-1 text-[11px] text-muted">
+                                                        {formatDateTime(segment.departAt)} –{" "}
+                                                        {formatDateTime(segment.arriveAt)} ·{" "}
+                                                        {segment.staffName ?? "Whole team"}
+                                                    </p>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Event Kit & Supplies */}
+                            <div className="flex flex-col justify-between rounded-xl border border-border p-4">
+                                <div>
+                                    <div className="mb-3 flex items-center justify-between border-b border-border/60 pb-2">
+                                        <div className="flex items-center gap-2">
+                                            <FiPackage className="h-4 w-4 text-primary" />
+                                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                                Event Kit & Supplies ({selected.supplies.length})
+                                            </h3>
+                                        </div>
+                                        <div className="flex gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => openKit(selected)}
+                                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium hover:bg-charcoal/5"
+                                            >
+                                                Manage kit
+                                            </button>
+                                            {selected.supplies.length > 0 && (
+                                                <Button
+                                                    variant="secondary"
+                                                    className="min-h-0 px-2.5 py-1 text-xs"
+                                                    onClick={() => void issueKit()}
+                                                    loading={busy}
+                                                >
+                                                    Issue kit
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {selected.supplies.length === 0 ? (
+                                        <p className="py-4 text-center text-xs text-muted">
+                                            No supplies planned for this event. Click "Manage kit" to reserve supplies and hair/makeup kits.
+                                        </p>
+                                    ) : (
+                                        <ul className="space-y-1.5 text-xs">
+                                            {selected.supplies.map((line) => (
+                                                <li
+                                                    key={line.supplyId}
+                                                    className="flex items-center justify-between gap-2 rounded-lg border border-border/60 p-2"
+                                                >
+                                                    <div>
+                                                        <span className="font-medium text-charcoal">
+                                                            {line.name}
+                                                        </span>
+                                                        <span className="block text-[11px] text-muted">
+                                                            Planned: {line.plannedQuantity} {line.unit}
+                                                        </span>
+                                                    </div>
+                                                    <span
+                                                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                                            line.status === "issued"
+                                                                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                                : "bg-slate-100 text-slate-700"
+                                                        }`}
+                                                    >
+                                                        {line.status === "issued"
+                                                            ? `Issued (${line.issuedQuantity} ${line.unit})`
+                                                            : "Planned"}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Bottom Controls */}
+                        <div className="flex justify-end gap-2 border-t border-border pt-4">
+                            <Button variant="secondary" onClick={() => setSelected(null)}>
+                                Close
+                            </Button>
+                        </div>
                     </div>
-                </Card>
+                </Modal>
             )}
 
             {editing && (
