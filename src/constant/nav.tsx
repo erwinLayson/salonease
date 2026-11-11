@@ -4,7 +4,6 @@ import {
     CalendarIcon,
     EventIcon,
     ClockIcon,
-    QueueIcon,
     ReceiptIcon,
     ScissorsIcon,
     SettingsIcon,
@@ -28,7 +27,6 @@ export function roleNavItems(role: Role): SidebarItem[] {
                   label: "Appointments",
                   icon: <CalendarIcon />,
               },
-              { href: "/owner/queue", label: "Walk-in queue", icon: <QueueIcon /> },
               { href: "/owner/schedule", label: "Schedule", icon: <ClockIcon /> },
               { href: "/owner/staff", label: "Staff", icon: <UsersIcon /> },
               {

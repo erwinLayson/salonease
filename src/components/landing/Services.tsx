@@ -102,35 +102,61 @@ export function Services() {
                         {visible.map((service) => (
                             <article
                                 key={service.id}
-                                className="flex flex-col rounded-xl border border-border bg-surface p-5 shadow-sm transition hover:border-primary"
+                                className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm transition hover:border-primary"
                             >
-                                <div className="flex items-start justify-between gap-2">
-                                    <h3 className="font-medium">{service.name}</h3>
+                                <div className="relative aspect-16/9 w-full overflow-hidden bg-charcoal/5 border-b border-border/60">
+                                    {service.image ? (
+                                        <img
+                                            src={service.image}
+                                            alt={service.name}
+                                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                        />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center bg-primary-light/30 text-primary-dark">
+                                            <svg
+                                                className="h-10 w-10 opacity-40"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth="1.5"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                aria-hidden="true"
+                                            >
+                                                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                                <circle cx="9" cy="9" r="2" />
+                                                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                                            </svg>
+                                        </div>
+                                    )}
                                     {POPULAR_SERVICES.has(service.name) && (
-                                        <span className="shrink-0 rounded-full bg-primary-dark px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                                        <span className="absolute top-2.5 right-2.5 rounded-full bg-primary-dark px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">
                                             Popular
                                         </span>
                                     )}
                                 </div>
-                                {service.description && (
-                                    <p className="mt-2 line-clamp-2 text-sm opacity-70">
-                                        {service.description}
-                                    </p>
-                                )}
-                                <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
-                                    <span className="text-sm">
-                                        <strong>{peso(service.price)}</strong>
-                                        <span className="opacity-70">
-                                            {" "}
-                                            · {service.durationMinutes} min
+                                <div className="flex flex-1 flex-col p-5">
+                                    <h3 className="font-semibold text-charcoal">{service.name}</h3>
+                                    {service.description && (
+                                        <p className="mt-2 line-clamp-2 text-sm opacity-70">
+                                            {service.description}
+                                        </p>
+                                    )}
+                                    <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
+                                        <span className="text-sm">
+                                            <strong>{peso(service.price)}</strong>
+                                            <span className="opacity-70">
+                                                {" "}
+                                                · {service.durationMinutes} min
+                                            </span>
                                         </span>
-                                    </span>
-                                    <a
-                                        href="/book"
-                                        className="inline-flex min-h-11 items-center text-sm font-medium text-primary-dark hover:underline"
-                                    >
-                                        Book →
-                                    </a>
+                                        <a
+                                            href="/book"
+                                            className="inline-flex min-h-11 items-center text-sm font-medium text-primary-dark hover:underline"
+                                        >
+                                            Book →
+                                        </a>
+                                    </div>
                                 </div>
                             </article>
                         ))}

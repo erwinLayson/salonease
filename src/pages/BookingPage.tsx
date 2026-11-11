@@ -414,19 +414,30 @@ export default function BookingPage() {
                                     Start by choosing a service.
                                 </p>
                             ) : (
-                                <dl className="space-y-0.5 text-sm lg:space-y-1">
-                                    <Row
-                                        label="Service"
-                                        value={`${service.name} · ${service.durationMinutes} min`}
-                                    />
-                                    {showStaffSummary && (
-                                        <Row label="Staff" value={selectedStaffName} />
+                                <div className="space-y-3">
+                                    {service.image && (
+                                        <div className="overflow-hidden rounded-xl border border-border bg-charcoal/5">
+                                            <img
+                                                src={service.image}
+                                                alt={service.name}
+                                                className="h-28 w-full object-cover"
+                                            />
+                                        </div>
                                     )}
-                                    {slot !== null && (
-                                        <Row label="When" value={`${date} at ${slot}`} />
-                                    )}
-                                    <Row label="Price" value={peso(service.price)} />
-                                </dl>
+                                    <dl className="space-y-0.5 text-sm lg:space-y-1">
+                                        <Row
+                                            label="Service"
+                                            value={`${service.name} · ${service.durationMinutes} min`}
+                                        />
+                                        {showStaffSummary && (
+                                            <Row label="Staff" value={selectedStaffName} />
+                                        )}
+                                        {slot !== null && (
+                                            <Row label="When" value={`${date} at ${slot}`} />
+                                        )}
+                                        <Row label="Price" value={peso(service.price)} />
+                                    </dl>
+                                </div>
                             )}
                             <p className="mt-2 hidden text-xs text-muted lg:mt-3 lg:block">
                                 You'll get a private link to manage or cancel this
@@ -510,21 +521,54 @@ export default function BookingPage() {
                                                     setSlot(null);
                                                     setStep("staff");
                                                 }}
-                                                className="w-full rounded-xl border border-border p-5 text-left transition hover:-translate-y-0.5 hover:border-primary hover:bg-primary-light/30 hover:shadow-lift"
+                                                className="flex h-full w-full flex-col overflow-hidden rounded-xl border border-border text-left transition hover:-translate-y-0.5 hover:border-primary hover:bg-primary-light/10 hover:shadow-lift"
                                             >
-                                                <span className="flex w-full items-start justify-between gap-3">
-                                                    <span>
-                                                        <span className="block font-medium">
-                                                            {item.name}
+                                                {item.image ? (
+                                                    <div className="aspect-16/9 w-full overflow-hidden bg-charcoal/5 border-b border-border/60">
+                                                        <img
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                                                        />
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex aspect-16/9 w-full items-center justify-center bg-primary-light/20 text-primary-dark border-b border-border/60">
+                                                        <svg
+                                                            className="h-8 w-8 opacity-40"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            strokeWidth="1.5"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            aria-hidden="true"
+                                                        >
+                                                            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                                            <circle cx="9" cy="9" r="2" />
+                                                            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                <div className="flex flex-1 flex-col justify-between p-4">
+                                                    <span className="flex w-full items-start justify-between gap-3">
+                                                        <span>
+                                                            <span className="block font-medium text-charcoal">
+                                                                {item.name}
+                                                            </span>
+                                                            {item.description && (
+                                                                <span className="mt-1 line-clamp-2 block text-xs text-muted">
+                                                                    {item.description}
+                                                                </span>
+                                                            )}
+                                                            <span className="mt-1 block text-xs text-muted">
+                                                                {item.durationMinutes} min
+                                                            </span>
                                                         </span>
-                                                        <span className="mt-1 block text-xs text-muted">
-                                                            {item.durationMinutes} min
+                                                        <span className="text-sm font-semibold text-primary-dark shrink-0">
+                                                            {peso(item.price)}
                                                         </span>
                                                     </span>
-                                                    <span className="text-sm font-semibold text-primary-dark">
-                                                        {peso(item.price)}
-                                                    </span>
-                                                </span>
+                                                </div>
                                             </button>
                                         </li>
                                     ))}

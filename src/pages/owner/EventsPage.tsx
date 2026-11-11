@@ -74,6 +74,8 @@ interface EventForm {
     phone: string;
     email: string;
     venueId: string;
+    venueName: string;
+    venueAddress: string;
     title: string;
     eventType: EventType;
     startAt: string;
@@ -99,6 +101,8 @@ const emptyForm = (): EventForm => {
         phone: "",
         email: "",
         venueId: "",
+        venueName: "",
+        venueAddress: "",
         title: "",
         eventType: "wedding",
         startAt: local(start),
@@ -168,6 +172,15 @@ export default function EventsPage() {
         Array<{ id: number; name: string; unit: string; currentQuantity: number }>
     >([]);
 
+    const reloadVenues = useCallback(async () => {
+        try {
+            const res = await api.get<{ data: Venue[] }>("/owner/venues");
+            setVenues(res.data.data);
+        } catch {
+            // ignore
+        }
+    }, []);
+
     const reload = useCallback(async () => {
         setLoading(true);
         try {
@@ -195,17 +208,14 @@ export default function EventsPage() {
             })
             .then((res) => setServices(res.data.data))
             .catch(() => {});
-        void api
-            .get<{ data: Venue[] }>("/owner/venues")
-            .then((res) => setVenues(res.data.data))
-            .catch(() => {});
+        void reloadVenues();
         void api
             .get<{ data: Array<{ id: number; name: string; unit: string; currentQuantity: number }> }>(
                 "/owner/supplies"
             )
             .then((res) => setSupplies(res.data.data))
             .catch(() => {});
-    }, []);
+    }, [reloadVenues]);
 
     const openCreate = () => {
         setForm(emptyForm());
@@ -215,12 +225,17 @@ export default function EventsPage() {
     };
 
     const openEdit = (event: EventDetail) => {
+        const matchingVenue = event.venue
+            ? venues.find((v) => v.id === event.venue?.id)
+            : undefined;
         setForm({
             firstName: "",
             lastName: "",
             phone: "",
             email: "",
             venueId: event.venue ? String(event.venue.id) : "",
+            venueName: event.venue?.name ?? "",
+            venueAddress: event.venue?.address ?? matchingVenue?.address ?? "",
             title: event.title,
             eventType: event.eventType,
             startAt: localInput(event.startAt),
@@ -268,6 +283,9 @@ export default function EventsPage() {
             return null;
         }
 
+        const locName = form.venueName.trim() || form.venueAddress.trim();
+        const locAddress = form.venueAddress.trim() || locName;
+
         return {
             customer: {
                 firstName: form.firstName,
@@ -276,6 +294,12 @@ export default function EventsPage() {
                 email: form.email || null,
             },
             venueId: form.venueId ? Number(form.venueId) : null,
+            venueName: locName,
+            venueAddress: locAddress,
+            venueLocation: {
+                name: locName,
+                address: locAddress,
+            },
             title: form.title,
             eventType: form.eventType,
             startAt: form.startAt,
@@ -305,6 +329,10 @@ export default function EventsPage() {
             toast.error("Customer first name and at least one contact detail are required.");
             return;
         }
+        if (!form.venueName.trim() && !form.venueAddress.trim()) {
+            toast.error("Event location / address is required.");
+            return;
+        }
         const payload = payloadFromForm();
         if (!payload) return;
 
@@ -319,7 +347,7 @@ export default function EventsPage() {
             }
             setEditing(null);
             setSelected(null);
-            await reload();
+            await Promise.all([reload(), reloadVenues()]);
         } finally {
             setBusy(false);
         }
@@ -519,7 +547,15 @@ export default function EventsPage() {
                                             {formatDateTime(event.startAt)}
                                         </td>
                                         <td className="px-3 py-3">
-                                            {event.venue?.name ?? "—"}
+                                            <p className="font-medium">{event.venue?.name ?? "—"}</p>
+                                            {event.venue?.address && (
+                                                <p
+                                                    className="max-w-[180px] truncate text-xs text-muted"
+                                                    title={event.venue.address}
+                                                >
+                                                    {event.venue.address}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-3 py-3">
                                             <span className="rounded-full bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark">
@@ -580,9 +616,15 @@ export default function EventsPage() {
                                     <dd>{selected.customer.name}</dd>
                                 </div>
                                 <div className="flex justify-between gap-3">
-                                    <dt className="text-muted">Venue</dt>
-                                    <dd>{selected.venue?.name ?? "To be confirmed"}</dd>
+                                    <dt className="text-muted">Venue / Location</dt>
+                                    <dd className="font-medium text-right">{selected.venue?.name ?? "To be confirmed"}</dd>
                                 </div>
+                                {selected.venue?.address && (
+                                    <div className="flex justify-between gap-3">
+                                        <dt className="text-muted">Address</dt>
+                                        <dd className="max-w-[260px] text-right text-xs text-muted">{selected.venue.address}</dd>
+                                    </div>
+                                )}
                                 <div className="flex justify-between gap-3">
                                     <dt className="text-muted">Event window</dt>
                                     <dd>
@@ -734,12 +776,14 @@ export default function EventsPage() {
                 <Modal
                     title={editing === "new" ? "New event" : `Edit ${editing.title}`}
                     onClose={() => setEditing(null)}
+                    wide
                 >
                     <div className="grid gap-4 sm:grid-cols-2">
                         {editing === "new" && (
                             <>
                                 <Field
-                                    label="Customer first name"
+                                    label="Customer first name *"
+                                    placeholder="e.g. Maria"
                                     value={form.firstName}
                                     onChange={(value) =>
                                         setForm((current) => ({ ...current, firstName: value }))
@@ -747,6 +791,7 @@ export default function EventsPage() {
                                 />
                                 <Field
                                     label="Customer last name"
+                                    placeholder="e.g. Santos"
                                     value={form.lastName}
                                     onChange={(value) =>
                                         setForm((current) => ({ ...current, lastName: value }))
@@ -754,6 +799,7 @@ export default function EventsPage() {
                                 />
                                 <Field
                                     label="Phone"
+                                    placeholder="e.g. 09171234567"
                                     value={form.phone}
                                     onChange={(value) =>
                                         setForm((current) => ({ ...current, phone: value }))
@@ -761,6 +807,7 @@ export default function EventsPage() {
                                 />
                                 <Field
                                     label="Email"
+                                    placeholder="e.g. maria@example.com"
                                     value={form.email}
                                     onChange={(value) =>
                                         setForm((current) => ({ ...current, email: value }))
@@ -769,7 +816,8 @@ export default function EventsPage() {
                             </>
                         )}
                         <Field
-                            label="Event title"
+                            label="Event title *"
+                            placeholder="e.g. Maria & Juan Wedding"
                             value={form.title}
                             onChange={(value) =>
                                 setForm((current) => ({ ...current, title: value }))
@@ -786,20 +834,77 @@ export default function EventsPage() {
                             }
                             options={TYPE_OPTIONS}
                         />
-                        <Select
-                            label="Venue"
-                            value={form.venueId}
-                            onChange={(value) =>
-                                setForm((current) => ({ ...current, venueId: value }))
-                            }
-                            options={[
-                                { value: "", label: "To be confirmed" },
-                                ...venues.map((venue) => ({
-                                    value: String(venue.id),
-                                    label: venue.name,
-                                })),
-                            ]}
-                        />
+
+                        {/* Location / Venue details */}
+                        <div className="sm:col-span-2 rounded-xl border border-border bg-charcoal/[0.02] p-3.5 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold uppercase tracking-wider text-muted">
+                                    Event Location / Venue
+                                </span>
+                                {venues.length > 0 && (
+                                    <span className="text-xs text-muted">
+                                        Type directly or pick a saved venue
+                                    </span>
+                                )}
+                            </div>
+
+                            {venues.length > 0 && (
+                                <Select
+                                    label="Quick-pick saved venue (optional)"
+                                    value={form.venueId}
+                                    onChange={(value) => {
+                                        const selectedVenue = venues.find(
+                                            (v) => String(v.id) === value
+                                        );
+                                        setForm((current) => ({
+                                            ...current,
+                                            venueId: value,
+                                            venueName: selectedVenue ? selectedVenue.name : current.venueName,
+                                            venueAddress: selectedVenue ? selectedVenue.address : current.venueAddress,
+                                        }));
+                                    }}
+                                    options={[
+                                        { value: "", label: "Custom location (type below)..." },
+                                        ...venues.map((venue) => ({
+                                            value: String(venue.id),
+                                            label: `${venue.name}${venue.address ? ` — ${venue.address}` : ""}`,
+                                        })),
+                                    ]}
+                                />
+                            )}
+
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <Field
+                                    label="Location / Venue name *"
+                                    placeholder="e.g. Manila Hotel, Bride's Residence, San Agustin Church"
+                                    value={form.venueName}
+                                    onChange={(value) =>
+                                        setForm((current) => {
+                                            const matches = venues.find(
+                                                (v) => v.name.toLowerCase() === value.trim().toLowerCase()
+                                            );
+                                            return {
+                                                ...current,
+                                                venueName: value,
+                                                venueId: matches ? String(matches.id) : "",
+                                            };
+                                        })
+                                    }
+                                />
+                                <Field
+                                    label="Location address *"
+                                    placeholder="e.g. One Rizal Park, Ermita, Manila"
+                                    value={form.venueAddress}
+                                    onChange={(value) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            venueAddress: value,
+                                        }))
+                                    }
+                                />
+                            </div>
+                        </div>
+
                         <Field
                             label="Travel buffer (minutes)"
                             type="number"
@@ -829,6 +934,7 @@ export default function EventsPage() {
                         />
                         <Field
                             label="Notes"
+                            placeholder="e.g. Bring extra curling irons, parking gate pass needed"
                             value={form.notes}
                             onChange={(value) =>
                                 setForm((current) => ({ ...current, notes: value }))
@@ -1183,7 +1289,7 @@ export default function EventsPage() {
                                         staffId: "",
                                         sequence: String(current.length + 1),
                                         from: "",
-                                        to: selected.venue?.name ?? "",
+                                        to: selected.venue?.address || selected.venue?.name || "",
                                         departAt: localInput(selected.startAt),
                                         arriveAt: localInput(selected.startAt),
                                         mode: "other",

@@ -26,7 +26,6 @@ import NotFoundPage from "./pages/NotFoundPage";
 // Admin Pages (owner + staff)
 import OwnerDashboard from "./pages/owner/ownerDashboard";
 import SchedulePage from "./pages/owner/SchedulePage";
-import QueuePage from "./pages/owner/QueuePage";
 import InventoryPage from "./pages/owner/InventoryPage";
 import EventsPage from "./pages/owner/EventsPage";
 import ServicesPage from "./pages/owner/ServicesPage";
@@ -115,7 +114,10 @@ function App() {
                                 element={<Navigate to="/owner/appointments" replace />}
                             />
                             <Route path="/owner/appointments" element={<OwnerDashboard />} />
-                            <Route path="/owner/queue" element={<QueuePage />} />
+                            <Route
+                                path="/owner/queue"
+                                element={<Navigate to="/owner/appointments" replace />}
+                            />
                             <Route path="/owner/inventory" element={<InventoryPage />} />
                             <Route path="/owner/events" element={<EventsPage />} />
                             <Route

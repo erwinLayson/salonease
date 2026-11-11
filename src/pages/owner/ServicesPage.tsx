@@ -10,11 +10,12 @@ import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { Field } from "../../components/ui/Field";
 import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
-import { BoxIcon, ReceiptIcon, ScissorsIcon } from "../../components/ui/icons";
+import { BoxIcon, FlaskIcon, ScissorsIcon } from "../../components/ui/icons";
 
 // Feature components
 import { ServiceForm } from "../../components/owner/ServiceForm";
-import { StatusAction } from "../../components/owner/StatusAction";
+import { IconAction } from "../../components/owner/IconAction";
+import { FiEdit2, FiPower, FiTrash2 } from "react-icons/fi";
 
 // Types
 import type { OwnerService } from "../../types";
@@ -25,6 +26,14 @@ import { formatDateTime, peso } from "../../lib/utils";
 type ServiceInventoryTab = "services" | "supplies" | "recipes";
 type SupplyCategory = "chemical" | "tool" | "event_kit" | "retail" | "other";
 type MovementType = "initial" | "purchase" | "adjustment" | "waste" | "return";
+
+interface RecipeItem {
+    supplyId: number;
+    supplyName: string;
+    unit: string;
+    quantityPerService: number;
+    serviceId?: number;
+}
 
 interface Supply {
     id: number;
@@ -190,12 +199,15 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
     const [recipeService, setRecipeService] = useState<OwnerService | null>(null);
     const [recipeValues, setRecipeValues] = useState<Record<number, string>>({});
     const [recipeSearch, setRecipeSearch] = useState("");
+    const [recipesByService, setRecipesByService] = useState<Record<number, RecipeItem[]>>({});
+    const [selectedAddSupplyId, setSelectedAddSupplyId] = useState<string>("");
+    const [selectedAddSupplyQty, setSelectedAddSupplyQty] = useState<string>("1");
 
     // Combined data loader
     const reload = useCallback(async () => {
         setLoading(true);
         try {
-            const [servicesRes, suppliesRes, alertsRes] = await Promise.all([
+            const [servicesRes, suppliesRes, alertsRes, recipesRes] = await Promise.all([
                 api.get<{ data: OwnerService[] }>("/owner/services", {
                     params: { includeInactive: true },
                 }),
@@ -205,10 +217,24 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                 api.get<{ data: Alert[] }>("/owner/inventory/alerts", {
                     params: { status: "open" },
                 }),
+                api
+                    .get<{ data: Array<RecipeItem & { serviceId: number }> }>(
+                        "/owner/inventory/recipes"
+                    )
+                    .catch(() => ({
+                        data: { data: [] as Array<RecipeItem & { serviceId: number }> },
+                    })),
             ]);
             setServices(servicesRes.data.data);
             setSupplies(suppliesRes.data.data);
             setAlerts(alertsRes.data.data);
+
+            const grouped: Record<number, RecipeItem[]> = {};
+            for (const item of recipesRes.data.data) {
+                if (!grouped[item.serviceId]) grouped[item.serviceId] = [];
+                grouped[item.serviceId].push(item);
+            }
+            setRecipesByService(grouped);
         } catch {
             // Failures surface as toast via interceptor
         } finally {
@@ -344,6 +370,8 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
     // Recipe handlers
     const openRecipe = async (service: OwnerService) => {
         setRecipeService(service);
+        setSelectedAddSupplyId("");
+        setSelectedAddSupplyQty("1");
         try {
             const res = await api.get<{
                 data: Array<{ supplyId: number; quantityPerService: number }>;
@@ -378,6 +406,7 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
             await api.put(`/owner/services/${recipeService.id}/supplies`, { items });
             toast.success(`Service recipe saved for ${recipeService.name}.`);
             setRecipeService(null);
+            await reload();
         } finally {
             setBusy(false);
         }
@@ -450,6 +479,21 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
         [supplies]
     );
 
+    const includedSupplyIds = useMemo(() => {
+        return Object.entries(recipeValues)
+            .filter(([, val]) => val !== undefined && val !== "" && Number(val) > 0)
+            .map(([id]) => Number(id));
+    }, [recipeValues]);
+
+    const availableSuppliesToAdd = useMemo(() => {
+        const includedSet = new Set(includedSupplyIds);
+        return supplies.filter((s) => s.isActive && !includedSet.has(s.id));
+    }, [supplies, includedSupplyIds]);
+
+    const selectedSupplyObj = useMemo(() => {
+        return supplies.find((s) => s.id === Number(selectedAddSupplyId));
+    }, [supplies, selectedAddSupplyId]);
+
     return (
         <div className="grid gap-6">
             {/* Page Header */}
@@ -496,6 +540,23 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                     {activeTab === "supplies" && (
                         <Button onClick={openCreateSupply}>New supply</Button>
                     )}
+                    {activeTab === "recipes" && (
+                        <Button
+                            onClick={() => {
+                                const candidate =
+                                    services.find((s) => !recipesByService[s.id]?.length) ||
+                                    services[0];
+                                if (candidate) {
+                                    void openRecipe(candidate);
+                                } else {
+                                    toast.info("Add a service first before setting up a recipe.");
+                                }
+                            }}
+                        >
+                            <FlaskIcon />
+                            <span>Set up recipe</span>
+                        </Button>
+                    )}
                 </div>
             </header>
 
@@ -540,7 +601,7 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                                 : "border-transparent text-muted hover:border-border hover:text-charcoal"
                         }`}
                     >
-                        <ReceiptIcon />
+                        <FlaskIcon />
                         <span>Service Recipes</span>
                     </button>
                 </nav>
@@ -580,79 +641,125 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                                 </p>
                             </div>
                         ) : (
-                            <ul className="grid gap-3">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {filteredServices.map((service) => (
-                                    <li
+                                    <div
                                         key={service.id}
-                                        className="rounded-xl border border-border p-4 transition-colors hover:border-primary/70"
+                                        className="group/card flex flex-col rounded-xl border border-border bg-surface transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-card"
                                     >
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="font-semibold text-charcoal">
-                                                {service.name}
-                                            </span>
-                                            <span className="rounded bg-charcoal/5 px-2 py-0.5 text-xs text-muted">
-                                                {service.duration_minutes} min
-                                            </span>
-                                            <span
-                                                className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                                    service.is_active === 1
-                                                        ? "bg-success-bg text-success"
-                                                        : "bg-charcoal/10 text-charcoal"
-                                                }`}
-                                            >
-                                                {service.is_active === 1 ? "Active" : "Inactive"}
-                                            </span>
-                                            <span className="ml-auto text-base font-bold text-charcoal">
-                                                {peso(service.price)}
-                                            </span>
-                                        </div>
-
-                                        {service.description && (
-                                            <p className="mt-1.5 text-xs text-muted">
-                                                {service.description}
-                                            </p>
-                                        )}
-
-                                        <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
-                                            <StatusAction
-                                                label="Edit"
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    setServiceCreating(false);
-                                                    setServiceEditing(service);
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                disabled={busy}
-                                                onClick={() => void openRecipe(service)}
-                                                className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-charcoal transition-colors hover:bg-charcoal/5 disabled:opacity-50"
-                                            >
-                                                <ReceiptIcon />
-                                                <span>Recipe</span>
-                                            </button>
-                                            {service.is_active === 1 ? (
-                                                <StatusAction
-                                                    label="Deactivate"
-                                                    disabled={busy}
-                                                    onClick={() => setDeactivateFor(service)}
+                                        <div className="relative aspect-16/9 w-full overflow-hidden rounded-t-xl bg-charcoal/5 border-b border-border/60">
+                                            {service.image ? (
+                                                <img
+                                                    src={service.image}
+                                                    alt={service.name}
+                                                    className="h-full w-full object-cover transition-transform duration-300 group-hover/card:scale-105"
                                                 />
                                             ) : (
-                                                <StatusAction
-                                                    label="Activate"
-                                                    disabled={busy}
-                                                    onClick={() => void setServiceStatus(service, true)}
-                                                />
+                                                <div className="flex h-full w-full items-center justify-center text-muted bg-primary-light/20">
+                                                    <svg
+                                                        className="h-9 w-9 opacity-35 text-primary-dark"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="1.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                                                        <circle cx="9" cy="9" r="2" />
+                                                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                                                    </svg>
+                                                </div>
                                             )}
-                                            <StatusAction
-                                                label="Delete"
-                                                disabled={busy}
-                                                onClick={() => setDeleteFor(service)}
-                                            />
+                                            <div className="absolute top-2.5 right-2.5">
+                                                <span
+                                                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold shadow-xs ${
+                                                        service.is_active === 1
+                                                            ? "bg-success text-white"
+                                                            : "bg-charcoal/70 text-white"
+                                                    }`}
+                                                >
+                                                    {service.is_active === 1 ? "Active" : "Inactive"}
+                                                </span>
+                                            </div>
+                                            <div className="absolute bottom-2.5 left-2.5">
+                                                <span className="rounded-md bg-charcoal/75 backdrop-blur-xs px-2 py-0.5 text-xs font-medium text-white shadow-xs">
+                                                    {service.duration_minutes} min
+                                                </span>
+                                            </div>
                                         </div>
-                                    </li>
+
+                                        <div className="flex flex-1 flex-col p-4">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <h3
+                                                    className="font-semibold text-charcoal text-base leading-snug line-clamp-1"
+                                                    title={service.name}
+                                                >
+                                                    {service.name}
+                                                </h3>
+                                                <span className="shrink-0 text-base font-bold text-primary-dark">
+                                                    {peso(service.price)}
+                                                </span>
+                                            </div>
+
+                                            <p className="mt-1.5 line-clamp-2 text-xs text-muted leading-relaxed min-h-[2rem]">
+                                                {service.description || "No description provided"}
+                                            </p>
+
+                                            <div className="mt-auto pt-3 border-t border-border flex items-center justify-between gap-1.5">
+                                                <div className="flex items-center gap-1.5">
+                                                    <IconAction
+                                                        size="sm"
+                                                        label="Edit service"
+                                                        icon={<FiEdit2 size={15} />}
+                                                        disabled={busy}
+                                                        onClick={() => {
+                                                            setServiceCreating(false);
+                                                            setServiceEditing(service);
+                                                        }}
+                                                    />
+                                                    <IconAction
+                                                        size="sm"
+                                                        label="Service recipe"
+                                                        icon={<FlaskIcon />}
+                                                        disabled={busy}
+                                                        onClick={() => void openRecipe(service)}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    {service.is_active === 1 ? (
+                                                        <IconAction
+                                                            size="sm"
+                                                            label="Deactivate service"
+                                                            icon={<FiPower size={15} />}
+                                                            disabled={busy}
+                                                            onClick={() => setDeactivateFor(service)}
+                                                        />
+                                                    ) : (
+                                                        <IconAction
+                                                            size="sm"
+                                                            label="Activate service"
+                                                            variant="success"
+                                                            icon={<FiPower size={15} />}
+                                                            disabled={busy}
+                                                            onClick={() => void setServiceStatus(service, true)}
+                                                        />
+                                                    )}
+                                                    <IconAction
+                                                        size="sm"
+                                                        label="Delete service"
+                                                        variant="danger"
+                                                        icon={<FiTrash2 size={15} />}
+                                                        disabled={busy}
+                                                        onClick={() => setDeleteFor(service)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                     </Card>
                 </div>
@@ -916,29 +1023,105 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                         />
                     </Card>
 
-                    <Card title={`All Services (${filteredRecipeServices.length})`}>
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {filteredRecipeServices.map((service) => (
-                                <button
-                                    key={service.id}
-                                    type="button"
-                                    onClick={() => void openRecipe(service)}
-                                    className="flex items-center justify-between gap-3 rounded-xl border border-border p-3.5 text-left transition-all hover:border-primary/60 hover:bg-charcoal/[0.02]"
-                                >
-                                    <div className="min-w-0">
-                                        <p className="truncate font-semibold text-charcoal text-sm">
-                                            {service.name}
-                                        </p>
-                                        <p className="mt-0.5 text-xs text-muted">
-                                            {service.duration_minutes} min · {peso(service.price)}
-                                        </p>
-                                    </div>
-                                    <span className="shrink-0 text-xs font-semibold text-primary-dark hover:underline">
-                                        Edit recipe →
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
+                    <Card title={`Service Recipes Directory (${filteredRecipeServices.length})`}>
+                        {filteredRecipeServices.length === 0 ? (
+                            <div className="py-8 text-center">
+                                <p className="text-sm font-medium">No services match your search</p>
+                                <p className="mt-1 text-xs text-muted">
+                                    Try searching with a different term.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {filteredRecipeServices.map((service) => {
+                                    const recipeItems = recipesByService[service.id] ?? [];
+                                    const hasRecipe = recipeItems.length > 0;
+                                    return (
+                                        <div
+                                            key={service.id}
+                                            className="flex flex-col justify-between rounded-xl border border-border bg-surface p-4 transition-all hover:border-primary/60 hover:shadow-sm"
+                                        >
+                                            <div>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                        {service.image && (
+                                                            <img
+                                                                src={service.image}
+                                                                alt={service.name}
+                                                                className="h-10 w-10 shrink-0 rounded-lg object-cover border border-border/60"
+                                                            />
+                                                        )}
+                                                        <div className="min-w-0 flex-1">
+                                                            <h3
+                                                                className="truncate font-semibold text-charcoal text-sm"
+                                                                title={service.name}
+                                                            >
+                                                                {service.name}
+                                                            </h3>
+                                                            <p className="mt-0.5 text-xs text-muted">
+                                                                {service.duration_minutes} min · {peso(service.price)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {hasRecipe ? (
+                                                        <span className="shrink-0 rounded-full bg-success-bg px-2 py-0.5 text-[11px] font-semibold text-success">
+                                                            {recipeItems.length}{" "}
+                                                            {recipeItems.length === 1 ? "supply" : "supplies"}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="shrink-0 rounded-full bg-charcoal/10 px-2 py-0.5 text-[11px] font-medium text-muted">
+                                                            No recipe
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* What's included preview */}
+                                                <div className="mt-3 border-t border-border/70 pt-2.5">
+                                                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                                        Included supplies
+                                                    </p>
+                                                    {hasRecipe ? (
+                                                        <ul className="mt-1.5 space-y-1 max-h-28 overflow-y-auto pr-1">
+                                                            {recipeItems.map((item) => (
+                                                                <li
+                                                                    key={item.supplyId}
+                                                                    className="flex items-center justify-between rounded-md bg-charcoal/[0.03] px-2 py-1 text-xs"
+                                                                >
+                                                                    <span
+                                                                        className="truncate text-charcoal font-medium mr-2"
+                                                                        title={item.supplyName}
+                                                                    >
+                                                                        {item.supplyName}
+                                                                    </span>
+                                                                    <span className="shrink-0 font-semibold text-primary-dark">
+                                                                        {item.quantityPerService} {item.unit}
+                                                                    </span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    ) : (
+                                                        <p className="mt-1.5 text-xs italic text-muted">
+                                                            No supplies linked. No stock is deducted on service completion.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-3.5 border-t border-border/70 pt-2.5 flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void openRecipe(service)}
+                                                    className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal transition-colors hover:border-primary hover:bg-primary/5 hover:text-primary-dark"
+                                                >
+                                                    <FlaskIcon />
+                                                    <span>{hasRecipe ? "Edit Recipe" : "Set Up Recipe"}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </Card>
                 </div>
             )}
@@ -1242,53 +1425,211 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                     title={`Recipe — ${recipeService.name}`}
                     onClose={() => setRecipeService(null)}
                 >
-                    <p className="mb-4 text-sm text-muted">
-                        Enter the quantity of each supply consumed by one completed
-                        service. Leave blank for supplies this service does not use.
-                    </p>
-                    <div className="max-h-[55vh] space-y-2 overflow-y-auto">
-                        {supplies
-                            .filter((supply) => supply.isActive)
-                            .map((supply) => (
-                                <div
-                                    key={supply.id}
-                                    className="flex items-center gap-3 rounded-xl border border-border p-2"
+                    <div className="space-y-4">
+                        {/* Service selector to easily switch between services */}
+                        <div className="rounded-xl border border-border bg-charcoal/[0.02] p-3">
+                            <label className="block text-xs font-semibold uppercase tracking-wide text-muted mb-1.5">
+                                Service to configure
+                            </label>
+                            <select
+                                aria-label="Select service to configure recipe"
+                                value={recipeService.id}
+                                onChange={(e) => {
+                                    const found = services.find(
+                                        (s) => s.id === Number(e.target.value)
+                                    );
+                                    if (found) void openRecipe(found);
+                                }}
+                                className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium text-charcoal focus:border-primary focus:outline-none"
+                            >
+                                {services.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                        {s.name} ({s.duration_minutes} min · {peso(s.price)})
+                                        {recipesByService[s.id]?.length
+                                            ? ` — ${recipesByService[s.id].length} supply(s)`
+                                            : " — [No recipe]"}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="mt-1.5 text-xs text-muted">
+                                When an appointment for{" "}
+                                <strong>{recipeService.name}</strong> is completed, the
+                                supplies listed below will be automatically deducted from your
+                                salon stock.
+                            </p>
+                        </div>
+
+                        {/* Currently included supplies in this recipe */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                                    Supplies included in this recipe ({includedSupplyIds.length})
+                                </h4>
+                            </div>
+
+                            {includedSupplyIds.length === 0 ? (
+                                <div className="rounded-xl border border-dashed border-border p-6 text-center">
+                                    <p className="text-sm font-medium text-charcoal">
+                                        No supplies in this recipe yet
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted">
+                                        Choose a supply from the section below and click "Add supply"
+                                        to include it.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="max-h-[38vh] space-y-2 overflow-y-auto pr-1">
+                                    {includedSupplyIds.map((supplyId) => {
+                                        const supply = supplies.find((s) => s.id === supplyId);
+                                        if (!supply) return null;
+                                        return (
+                                            <div
+                                                key={supply.id}
+                                                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-surface p-3 transition-colors hover:border-primary/50"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-semibold text-charcoal">
+                                                        {supply.name}
+                                                    </p>
+                                                    <p className="text-xs text-muted">
+                                                        SKU: {supply.sku} · Stock on hand:{" "}
+                                                        <span
+                                                            className={
+                                                                supply.lowStock
+                                                                    ? "font-bold text-danger"
+                                                                    : "font-medium"
+                                                            }
+                                                        >
+                                                            {supply.currentQuantity} {supply.unit}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs text-muted">
+                                                            Deduct:
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min="0.001"
+                                                            step="any"
+                                                            placeholder="Qty"
+                                                            value={recipeValues[supply.id] ?? ""}
+                                                            onChange={(e) =>
+                                                                setRecipeValues((values) => ({
+                                                                    ...values,
+                                                                    [supply.id]: e.target.value,
+                                                                }))
+                                                            }
+                                                            className="w-24 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-right text-sm font-semibold text-charcoal focus:border-primary focus:outline-none"
+                                                            aria-label={`Quantity for ${supply.name}`}
+                                                        />
+                                                        <span className="w-12 text-xs font-medium text-muted">
+                                                            {supply.unit}
+                                                        </span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        title="Remove from recipe"
+                                                        onClick={() => {
+                                                            setRecipeValues((values) => {
+                                                                const next = { ...values };
+                                                                delete next[supply.id];
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className="rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold text-danger hover:bg-danger-bg/50 transition-colors"
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Add supply to recipe section */}
+                        <div className="rounded-xl border border-border bg-charcoal/[0.02] p-3.5">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted mb-2">
+                                + Add a supply to this recipe
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <select
+                                    aria-label="Select supply to add"
+                                    value={selectedAddSupplyId}
+                                    onChange={(e) => setSelectedAddSupplyId(e.target.value)}
+                                    className="min-w-[200px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-charcoal focus:border-primary focus:outline-none"
                                 >
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium">
-                                            {supply.name}
-                                        </p>
-                                        <p className="text-xs text-muted">
-                                            {supply.currentQuantity} {supply.unit} on hand
-                                        </p>
-                                    </div>
+                                    <option value="">
+                                        -- Choose a supply from inventory --
+                                    </option>
+                                    {availableSuppliesToAdd.map((s) => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} ({s.currentQuantity} {s.unit} in stock)
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <div className="flex items-center gap-1.5">
                                     <input
                                         type="number"
-                                        min="0"
-                                        step="0.001"
-                                        value={recipeValues[supply.id] ?? ""}
-                                        onChange={(event) =>
-                                            setRecipeValues((values) => ({
-                                                ...values,
-                                                [supply.id]: event.target.value,
-                                            }))
-                                        }
-                                        className="w-24 rounded-lg border border-border bg-surface px-2 py-1.5 text-right text-sm"
-                                        aria-label={`Quantity for ${supply.name}`}
+                                        min="0.001"
+                                        step="any"
+                                        placeholder="Qty"
+                                        value={selectedAddSupplyQty}
+                                        onChange={(e) => setSelectedAddSupplyQty(e.target.value)}
+                                        className="w-20 rounded-lg border border-border bg-surface px-2.5 py-2 text-right text-sm font-semibold text-charcoal focus:border-primary focus:outline-none"
+                                        aria-label="Add supply quantity"
                                     />
-                                    <span className="w-12 text-xs text-muted">
-                                        {supply.unit}
+                                    <span className="text-xs text-muted w-10">
+                                        {selectedSupplyObj?.unit ?? "units"}
                                     </span>
                                 </div>
-                            ))}
-                    </div>
-                    <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setRecipeService(null)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={() => void saveRecipe()} loading={busy}>
-                            Save recipe
-                        </Button>
+
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    disabled={!selectedAddSupplyId}
+                                    onClick={() => {
+                                        if (!selectedAddSupplyId) return;
+                                        const qty = Number(selectedAddSupplyQty);
+                                        if (!Number.isFinite(qty) || qty <= 0) {
+                                            toast.error("Quantity must be greater than 0");
+                                            return;
+                                        }
+                                        setRecipeValues((values) => ({
+                                            ...values,
+                                            [Number(selectedAddSupplyId)]: String(qty),
+                                        }));
+                                        setSelectedAddSupplyId("");
+                                        setSelectedAddSupplyQty("1");
+                                    }}
+                                >
+                                    Add supply
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                            <p className="text-xs text-muted">
+                                {includedSupplyIds.length === 0
+                                    ? "Saving will clear all recipe items for this service."
+                                    : `${includedSupplyIds.length} supply item(s) will be automatically deducted.`}
+                            </p>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setRecipeService(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button onClick={() => void saveRecipe()} loading={busy}>
+                                    Save recipe
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </Modal>
             )}

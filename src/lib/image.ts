@@ -1,10 +1,14 @@
 /**
  * Reads an image file and returns a resized JPEG data URL.
  *
- * Avatars are stored directly on the staff row (no external file storage), so
+ * Images are stored directly on the row as base64 data URLs, so
  * the image is scaled down and re-encoded to keep the payload small.
  */
-export const fileToAvatarDataUrl = (file: File, maxSize = 256): Promise<string> =>
+export const fileToImageDataUrl = (
+    file: File,
+    maxSize = 800,
+    quality = 0.85
+): Promise<string> =>
     new Promise((resolve, reject) => {
         if (!file.type.startsWith("image/")) {
             reject(new Error("Please choose an image file."));
@@ -36,9 +40,15 @@ export const fileToAvatarDataUrl = (file: File, maxSize = 256): Promise<string> 
                 context.fillRect(0, 0, width, height);
                 context.drawImage(image, 0, 0, width, height);
 
-                resolve(canvas.toDataURL("image/jpeg", 0.85));
+                resolve(canvas.toDataURL("image/jpeg", quality));
             };
             image.src = reader.result as string;
         };
         reader.readAsDataURL(file);
     });
+
+/**
+ * Reads an avatar image file and returns a resized JPEG data URL.
+ */
+export const fileToAvatarDataUrl = (file: File, maxSize = 256): Promise<string> =>
+    fileToImageDataUrl(file, maxSize);

@@ -8,11 +8,11 @@ import type { ReactNode } from "react";
  */
 export function Tooltip(props: { label: string; children: ReactNode }) {
     return (
-        <span className="group relative inline-flex">
+        <span className="group/tooltip relative inline-flex">
             {props.children}
             <span
-                aria-hidden
-                className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 hidden w-max max-w-48 -translate-x-1/2 rounded-lg border border-border bg-charcoal px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-white shadow-lift group-hover:block"
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1.5 hidden w-max max-w-48 -translate-x-1/2 rounded-lg border border-border bg-charcoal px-2.5 py-1 text-xs font-medium whitespace-nowrap text-white shadow-lift group-hover/tooltip:block group-focus-within/tooltip:block"
             >
                 {props.label}
             </span>

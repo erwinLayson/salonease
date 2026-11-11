@@ -62,6 +62,11 @@ export default function MyEventsPage() {
                                     <p className="mt-0.5 text-sm text-muted">
                                         {event.venueName ?? "Venue to be confirmed"}
                                     </p>
+                                    {event.venueAddress && (
+                                        <p className="text-xs text-muted">
+                                            {event.venueAddress}
+                                        </p>
+                                    )}
                                 </div>
                                 <span className="rounded-full bg-primary-light px-2.5 py-0.5 text-xs font-medium text-primary-dark">
                                     {ROLE_LABELS[event.role] ?? event.role}

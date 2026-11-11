@@ -13,6 +13,7 @@ export interface Service {
     name: string;
     description: string | null;
     category?: ServiceCategory;
+    image?: string | null;
     price: number;
     durationMinutes: number;
 }
@@ -164,6 +165,7 @@ export interface OwnerService {
     name: string;
     description: string | null;
     category: ServiceCategory;
+    image?: string | null;
     price: number;
     duration_minutes: number;
     is_active: number;
@@ -436,7 +438,7 @@ export interface EventDetail {
         phone: string | null;
         email: string | null;
     };
-    venue: { id: number; name: string } | null;
+    venue: { id: number; name: string; address?: string } | null;
     title: string;
     eventType: EventType;
     eventDate: string;
@@ -465,6 +467,7 @@ export interface StaffEvent {
     startAt: string;
     endAt: string;
     venueName: string | null;
+    venueAddress?: string | null;
     role: EventAssignmentRole;
     callTime: string;
     releaseTime: string;
