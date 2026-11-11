@@ -811,17 +811,40 @@ export default function EventsPage() {
                                             {peso(event.total)}
                                         </span>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            void openDetail(event);
-                                        }}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal transition-colors hover:border-primary hover:bg-primary-light/10 hover:text-primary-dark"
-                                    >
-                                        <span>Open</span>
-                                        <FiArrowRight className="h-3 w-3" />
-                                    </button>
+                                    <div className="flex items-center gap-1.5">
+                                        {nextStatuses(event.status).length > 0 && (
+                                            <select
+                                                value=""
+                                                onClick={(e) => e.stopPropagation()}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    if (e.target.value) {
+                                                        void changeStatus(event, e.target.value as EventStatus);
+                                                    }
+                                                }}
+                                                className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs text-charcoal outline-none hover:border-primary cursor-pointer transition-colors"
+                                                title="Quick status change"
+                                            >
+                                                <option value="" disabled>Status…</option>
+                                                {nextStatuses(event.status).map((st) => (
+                                                    <option key={st} value={st}>
+                                                        → {STATUS_LABELS[st]}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void openDetail(event);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-charcoal transition-colors hover:border-primary hover:bg-primary-light/10 hover:text-primary-dark"
+                                        >
+                                            <span>Open</span>
+                                            <FiArrowRight className="h-3 w-3" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -886,17 +909,40 @@ export default function EventsPage() {
                                             {peso(event.total)}
                                         </td>
                                         <td className="px-3 py-3 text-right">
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    void openDetail(event);
-                                                }}
-                                                className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary-dark hover:bg-primary-light/10"
-                                            >
-                                                <span>Open</span>
-                                                <FiArrowRight className="h-3 w-3" />
-                                            </button>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                {nextStatuses(event.status).length > 0 && (
+                                                    <select
+                                                        value=""
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            if (e.target.value) {
+                                                                void changeStatus(event, e.target.value as EventStatus);
+                                                            }
+                                                        }}
+                                                        className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-charcoal outline-none hover:border-primary cursor-pointer transition-colors"
+                                                        title="Quick status change"
+                                                    >
+                                                        <option value="" disabled>Status…</option>
+                                                        {nextStatuses(event.status).map((st) => (
+                                                            <option key={st} value={st}>
+                                                                → {STATUS_LABELS[st]}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        void openDetail(event);
+                                                    }}
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs hover:border-primary hover:text-primary-dark hover:bg-primary-light/10"
+                                                >
+                                                    <span>Open</span>
+                                                    <FiArrowRight className="h-3 w-3" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -1298,6 +1344,58 @@ export default function EventsPage() {
                     }
                 >
                     <div className="grid gap-4 sm:grid-cols-2">
+                        {editing !== "new" && (
+                            <div className="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-charcoal/[0.02] p-3">
+                                <div>
+                                    <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted">
+                                        Current Status
+                                    </span>
+                                    <span
+                                        className={`mt-1 inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                                            STATUS_BADGE_CLASSES[editing.status]
+                                        }`}
+                                    >
+                                        {STATUS_LABELS[editing.status]}
+                                    </span>
+                                </div>
+                                {nextStatuses(editing.status).length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-muted">Update to:</span>
+                                        <select
+                                            value=""
+                                            onChange={async (e) => {
+                                                const next = e.target.value as EventStatus;
+                                                if (next) {
+                                                    try {
+                                                        const res = await api.patch<{ data: EventDetail }>(
+                                                            `/owner/events/${editing.id}/status`,
+                                                            { status: next }
+                                                        );
+                                                        setEditing(res.data.data);
+                                                        await reload();
+                                                        toast.success(
+                                                            `Event status updated to ${STATUS_LABELS[next]}.`
+                                                        );
+                                                    } catch {
+                                                        // toast via interceptor
+                                                    }
+                                                }
+                                            }}
+                                            className="cursor-pointer rounded-lg border border-border bg-surface px-2.5 py-1 text-xs text-charcoal outline-none hover:border-primary focus:border-primary"
+                                        >
+                                            <option value="" disabled>
+                                                Select new status…
+                                            </option>
+                                            {nextStatuses(editing.status).map((st) => (
+                                                <option key={st} value={st}>
+                                                    {STATUS_LABELS[st]}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         {editing === "new" && (
                             <>
                                 <Field
