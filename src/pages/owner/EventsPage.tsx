@@ -262,6 +262,19 @@ export default function EventsPage() {
         setEditing(event);
     };
 
+    const toggleService = (serviceId: number) => {
+        setServiceQty((current) => {
+            const next = { ...current };
+            const currentQty = Number(next[serviceId]);
+            if (next[serviceId] !== undefined && next[serviceId] !== "" && currentQty > 0) {
+                delete next[serviceId];
+            } else {
+                next[serviceId] = "1";
+            }
+            return next;
+        });
+    };
+
     const payloadFromForm = () => {
         const items = Object.entries(serviceQty)
             .map(([serviceId, value]) => ({
@@ -943,31 +956,101 @@ export default function EventsPage() {
                     </div>
 
                     <div className="mt-5">
-                        <p className="mb-2 text-sm font-medium">Services</p>
+                        <div className="mb-2 flex items-center justify-between">
+                            <p className="text-sm font-medium">Services</p>
+                            <span className="text-xs text-muted">
+                                Check services to include in this event
+                            </span>
+                        </div>
                         <div className="grid gap-2 sm:grid-cols-2">
-                            {services.map((service) => (
-                                <div
-                                    key={service.id}
-                                    className="flex items-center gap-2 rounded-lg border border-border p-2"
-                                >
-                                    <span className="min-w-0 flex-1 truncate text-sm">
-                                        {service.name}
-                                    </span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={serviceQty[service.id] ?? ""}
-                                        onChange={(event) =>
-                                            setServiceQty((current) => ({
-                                                ...current,
-                                                [service.id]: event.target.value,
-                                            }))
-                                        }
-                                        className="w-16 rounded-lg border border-border bg-surface px-2 py-1 text-right text-sm"
-                                        aria-label={`Quantity for ${service.name}`}
-                                    />
-                                </div>
-                            ))}
+                            {services
+                                .filter(
+                                    (s) =>
+                                        s.is_active === 1 ||
+                                        (serviceQty[s.id] !== undefined &&
+                                            Number(serviceQty[s.id]) > 0)
+                                )
+                                .map((service) => {
+                                    const rawQty = serviceQty[service.id];
+                                    const isChecked =
+                                        rawQty !== undefined &&
+                                        rawQty !== "" &&
+                                        Number(rawQty) > 0;
+                                    return (
+                                        <div
+                                            key={service.id}
+                                            onClick={() => toggleService(service.id)}
+                                            className={`flex items-center justify-between gap-3 rounded-xl border p-2.5 transition cursor-pointer select-none ${
+                                                isChecked
+                                                    ? "border-primary bg-primary-light/15 shadow-xs"
+                                                    : "border-border/80 bg-surface hover:border-border hover:bg-charcoal/[0.02]"
+                                            }`}
+                                        >
+                                            <div
+                                                className="flex items-center gap-2.5 min-w-0 flex-1"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    id={`service-${service.id}`}
+                                                    checked={isChecked}
+                                                    onChange={() => toggleService(service.id)}
+                                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary/30 accent-primary cursor-pointer"
+                                                />
+                                                <label
+                                                    htmlFor={`service-${service.id}`}
+                                                    className="min-w-0 flex-1 truncate cursor-pointer"
+                                                >
+                                                    <p
+                                                        className={`text-sm truncate ${
+                                                            isChecked
+                                                                ? "font-medium text-charcoal"
+                                                                : "text-charcoal/90"
+                                                        }`}
+                                                    >
+                                                        {service.name}
+                                                    </p>
+                                                    <p className="text-xs text-muted">
+                                                        {peso(service.price)}
+                                                    </p>
+                                                </label>
+                                            </div>
+
+                                            {isChecked && (
+                                                <div
+                                                    className="flex items-center gap-1.5 shrink-0"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <span className="text-xs text-muted font-medium">
+                                                        Qty:
+                                                    </span>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={rawQty}
+                                                        onChange={(event) =>
+                                                            setServiceQty((current) => ({
+                                                                ...current,
+                                                                [service.id]: event.target.value,
+                                                            }))
+                                                        }
+                                                        onBlur={(event) => {
+                                                            const val = Number(event.target.value);
+                                                            if (!Number.isFinite(val) || val <= 0) {
+                                                                setServiceQty((current) => ({
+                                                                    ...current,
+                                                                    [service.id]: "1",
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="w-16 rounded-lg border border-primary/50 bg-surface px-2 py-1 text-center text-sm font-semibold text-charcoal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        aria-label={`Quantity for ${service.name}`}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                         </div>
                     </div>
 
