@@ -16,6 +16,7 @@ export function Modal(props: {
     children: ReactNode;
     wide?: boolean;
     extraWide?: boolean;
+    footer?: ReactNode;
 }) {
     const { onClose } = props;
     const dialogRef = useRef<HTMLDivElement>(null);
@@ -97,11 +98,12 @@ export function Modal(props: {
                 aria-label={props.title}
                 tabIndex={-1}
                 onKeyDown={trapFocus}
-                className={`no-scrollbar relative max-h-[calc(100svh-2rem)] w-full ${
+                className={`relative flex max-h-[calc(100svh-2rem)] w-full flex-col ${
                     props.extraWide ? "max-w-4xl" : props.wide ? "max-w-2xl" : "max-w-lg"
-                } overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-lift`}
+                } overflow-hidden rounded-2xl border border-border bg-surface shadow-lift`}
             >
-                <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
+                {/* Fixed Header */}
+                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3.5">
                     <h2 className="text-base font-semibold tracking-tight text-charcoal">
                         {props.title}
                     </h2>
@@ -109,12 +111,23 @@ export function Modal(props: {
                         type="button"
                         onClick={onClose}
                         aria-label="Close dialog"
-                        className="min-h-11 rounded-lg px-3 text-charcoal transition-colors hover:bg-charcoal/5"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-charcoal transition-colors hover:bg-charcoal/5"
                     >
                         ✕
                     </button>
                 </div>
-                {props.children}
+
+                {/* Scrollable Content Body */}
+                <div className="no-scrollbar flex-1 overflow-y-auto p-5">
+                    {props.children}
+                </div>
+
+                {/* Fixed Footer */}
+                {props.footer && (
+                    <div className="shrink-0 border-t border-border bg-surface px-5 py-3.5">
+                        {props.footer}
+                    </div>
+                )}
             </div>
         </div>
     );

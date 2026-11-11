@@ -912,6 +912,13 @@ export default function EventsPage() {
                     title={`${selected.title} · ${selected.reference}`}
                     onClose={() => setSelected(null)}
                     extraWide
+                    footer={
+                        <div className="flex justify-end gap-2">
+                            <Button variant="secondary" onClick={() => setSelected(null)}>
+                                Close
+                            </Button>
+                        </div>
+                    }
                 >
                     <div className="space-y-6">
                         {/* Status Strip & Quick Action Transitions */}
@@ -1270,13 +1277,6 @@ export default function EventsPage() {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Modal Bottom Controls */}
-                        <div className="flex justify-end gap-2 border-t border-border pt-4">
-                            <Button variant="secondary" onClick={() => setSelected(null)}>
-                                Close
-                            </Button>
-                        </div>
                     </div>
                 </Modal>
             )}
@@ -1286,6 +1286,16 @@ export default function EventsPage() {
                     title={editing === "new" ? "New event" : `Edit ${editing.title}`}
                     onClose={() => setEditing(null)}
                     wide
+                    footer={
+                        <div className="flex justify-end gap-2">
+                            <Button variant="secondary" onClick={() => setEditing(null)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={() => void saveEvent()} loading={busy}>
+                                Save event
+                            </Button>
+                        </div>
+                    }
                 >
                     <div className="grid gap-4 sm:grid-cols-2">
                         {editing === "new" && (
@@ -1687,20 +1697,19 @@ export default function EventsPage() {
                             ))}
                         </div>
                     </div>
-
-                    <div className="mt-5 flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setEditing(null)}>
-                            Cancel
-                        </Button>
-                        <Button onClick={() => void saveEvent()} loading={busy}>
-                            Save event
-                        </Button>
-                    </div>
                 </Modal>
             )}
 
             {venueOpen && (
-                <Modal title="Venues" onClose={() => setVenueOpen(false)}>
+                <Modal
+                    title="Venues"
+                    onClose={() => setVenueOpen(false)}
+                    footer={
+                        <div className="flex justify-end">
+                            <Button onClick={() => void createVenue()}>Add venue</Button>
+                        </div>
+                    }
+                >
                     <ul className="mb-4 space-y-1 text-sm">
                         {venues.map((venue) => (
                             <li key={venue.id} className="flex justify-between gap-2">
@@ -1739,9 +1748,6 @@ export default function EventsPage() {
                             }
                         />
                     </div>
-                    <div className="mt-4 flex justify-end">
-                        <Button onClick={() => void createVenue()}>Add venue</Button>
-                    </div>
                 </Modal>
             )}
 
@@ -1749,6 +1755,34 @@ export default function EventsPage() {
                 <Modal
                     title={`Travel itinerary — ${selected.title}`}
                     onClose={() => setItineraryOpen(false)}
+                    footer={
+                        <div className="flex w-full items-center justify-between">
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setItinerary((current) => [
+                                        ...current,
+                                        {
+                                            staffId: "",
+                                            sequence: String(current.length + 1),
+                                            from: "",
+                                            to: selected.venue?.address || selected.venue?.name || "",
+                                            departAt: localInput(selected.startAt),
+                                            arriveAt: localInput(selected.startAt),
+                                            mode: "other",
+                                            notes: "",
+                                        },
+                                    ])
+                                }
+                                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-charcoal/5"
+                            >
+                                Add segment
+                            </button>
+                            <Button onClick={() => void saveItinerary()} loading={busy}>
+                                Save itinerary
+                            </Button>
+                        </div>
+                    }
                 >
                     <div className="space-y-2">
                         {itinerary.map((segment, index) => (
@@ -1858,32 +1892,6 @@ export default function EventsPage() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-3 flex justify-between">
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setItinerary((current) => [
-                                    ...current,
-                                    {
-                                        staffId: "",
-                                        sequence: String(current.length + 1),
-                                        from: "",
-                                        to: selected.venue?.address || selected.venue?.name || "",
-                                        departAt: localInput(selected.startAt),
-                                        arriveAt: localInput(selected.startAt),
-                                        mode: "other",
-                                        notes: "",
-                                    },
-                                ])
-                            }
-                            className="rounded-lg border border-border px-2 py-1 text-xs hover:bg-charcoal/5"
-                        >
-                            Add segment
-                        </button>
-                        <Button onClick={() => void saveItinerary()} loading={busy}>
-                            Save itinerary
-                        </Button>
-                    </div>
                 </Modal>
             )}
 
@@ -1891,12 +1899,25 @@ export default function EventsPage() {
                 <Modal
                     title={`Event kit — ${selected.title}`}
                     onClose={() => setKitOpen(false)}
+                    footer={
+                        <div className="flex justify-end gap-2">
+                            <Button variant="secondary" onClick={() => setKitOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button variant="secondary" onClick={() => void issueKit()} loading={busy}>
+                                Issue kit
+                            </Button>
+                            <Button onClick={() => void saveKit()} loading={busy}>
+                                Save kit
+                            </Button>
+                        </div>
+                    }
                 >
                     <p className="mb-3 text-sm text-muted">
                         Planned quantities are reserved when you issue the kit. Issuing
                         deducts stock immediately.
                     </p>
-                    <div className="max-h-[55vh] space-y-2 overflow-y-auto">
+                    <div className="space-y-2">
                         {supplies.map((supply) => (
                             <div
                                 key={supply.id}
@@ -1927,17 +1948,6 @@ export default function EventsPage() {
                                 <span className="w-12 text-xs text-muted">{supply.unit}</span>
                             </div>
                         ))}
-                    </div>
-                    <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => setKitOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button variant="secondary" onClick={() => void issueKit()} loading={busy}>
-                            Issue kit
-                        </Button>
-                        <Button onClick={() => void saveKit()} loading={busy}>
-                            Save kit
-                        </Button>
                     </div>
                 </Modal>
             )}
