@@ -32,7 +32,6 @@ const EMPTY_TOTALS: DailyTotals = {
     gcashTotal: 0,
     cardTotal: 0,
     otherTotal: 0,
-    commissionTotal: 0,
     inventoryCostTotal: 0,
 };
 
@@ -180,10 +179,6 @@ export default function DailyClosePage() {
                             <Metric label="GCash" value={peso(totals.gcashTotal)} />
                             <Metric label="Card" value={peso(totals.cardTotal)} />
                             <Metric label="Other" value={peso(totals.otherTotal)} />
-                            <Metric
-                                label="Commission"
-                                value={peso(totals.commissionTotal)}
-                            />
                             <Metric
                                 label="Inventory cost"
                                 value={peso(totals.inventoryCostTotal)}

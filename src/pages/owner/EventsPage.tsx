@@ -142,7 +142,6 @@ interface AssignmentDraft {
     callTime: string;
     releaseTime: string;
     travelRequired: boolean;
-    commissionSharePercent: string;
 }
 
 const emptyAssignment = (event?: EventDetail): AssignmentDraft => ({
@@ -151,7 +150,6 @@ const emptyAssignment = (event?: EventDetail): AssignmentDraft => ({
     callTime: event ? localInput(event.startAt) : "",
     releaseTime: event ? localInput(event.endAt) : "",
     travelRequired: true,
-    commissionSharePercent: "",
 });
 
 export default function EventsPage() {
@@ -308,10 +306,6 @@ export default function EventsPage() {
                 callTime: localInput(assignment.callTime),
                 releaseTime: localInput(assignment.releaseTime),
                 travelRequired: assignment.travelRequired,
-                commissionSharePercent:
-                    assignment.commissionSharePercent === null
-                        ? ""
-                        : String(assignment.commissionSharePercent),
             }))
         );
         setSelected(null);
@@ -382,9 +376,6 @@ export default function EventsPage() {
                 callTime: item.callTime,
                 releaseTime: item.releaseTime,
                 travelRequired: item.travelRequired,
-                commissionSharePercent: item.commissionSharePercent
-                    ? Number(item.commissionSharePercent)
-                    : null,
             })),
         };
     };
@@ -1192,8 +1183,6 @@ export default function EventsPage() {
                                                     {assignment.travelRequired
                                                         ? "🚗 Travel required"
                                                         : "🏠 On-site / No travel"}
-                                                    {assignment.commissionSharePercent !== null &&
-                                                        ` · ${assignment.commissionSharePercent}% commission`}
                                                 </p>
                                             </div>
                                         </div>
@@ -1761,24 +1750,7 @@ export default function EventsPage() {
                                         />
                                         Travel required
                                     </label>
-                                    <div className="flex items-end justify-between gap-2">
-                                        <Field
-                                            label="Commission share %"
-                                            type="number"
-                                            value={assignment.commissionSharePercent}
-                                            onChange={(value) =>
-                                                setAssignments((current) =>
-                                                    current.map((item, i) =>
-                                                        i === index
-                                                            ? {
-                                                                  ...item,
-                                                                  commissionSharePercent: value,
-                                                              }
-                                                            : item
-                                                    )
-                                                )
-                                            }
-                                        />
+                                    <div className="mt-2 flex justify-end">
                                         <button
                                             type="button"
                                             onClick={() =>
@@ -1786,7 +1758,7 @@ export default function EventsPage() {
                                                     current.filter((_, i) => i !== index)
                                                 )
                                             }
-                                            className="mb-0.5 rounded-lg border border-danger-line px-2 py-2 text-xs text-danger hover:bg-danger-bg"
+                                            className="rounded-lg border border-danger-line px-2 py-2 text-xs text-danger hover:bg-danger-bg"
                                         >
                                             Remove
                                         </button>

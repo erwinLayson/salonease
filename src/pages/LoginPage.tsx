@@ -62,7 +62,7 @@ export default function LoginPage(props: { onLoggedIn: (user: SessionUser) => vo
                             <span className="italic text-gold-light">beautifully organised.</span>
                         </h1>
                         <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/70">
-                            Appointments, schedules and commissions — all in one calm place.
+                            Appointments and schedules — all in one calm place.
                         </p>
                     </div>
                     <p className="relative text-[11px] uppercase tracking-widest text-white/50">

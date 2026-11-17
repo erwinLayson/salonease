@@ -339,7 +339,6 @@ export type InAppNotificationType =
     | "low_stock"
     | "event_assigned"
     | "event_changed"
-    | "commission_ready"
     | "system";
 
 export interface InAppNotification {
@@ -400,7 +399,6 @@ export interface EventAssignment {
     releaseTime: string;
     travelRequired: boolean;
     status: string;
-    commissionSharePercent: number | null;
     notes: string | null;
     conflict: string | null;
 }
@@ -523,77 +521,7 @@ export interface YearlyTopService {
     revenue: number;
 }
 
-// --- Finance: commissions and daily close ---
-
-export type CommissionRateType = "percent" | "fixed";
-export type CommissionEntryStatus = "accrued" | "approved" | "paid" | "void";
-export type PayoutStatus = "draft" | "approved" | "paid" | "void";
-
-/** A commission rule row. `staffId`/`serviceId` null mean "all". */
-export interface CommissionRule {
-    id: number;
-    staffId: number | null;
-    serviceId: number | null;
-    serviceCategory: ServiceCategory | null;
-    rateType: CommissionRateType;
-    rateValue: number;
-    effectiveFrom: string;
-    effectiveTo: string | null;
-    priority: number;
-    isActive: boolean;
-    notes: string | null;
-}
-
-export interface CommissionEntry {
-    id: number;
-    sourceType: "appointment" | "event";
-    sourceId: number;
-    transactionId: number | null;
-    transactionReference: string | null;
-    eventId: number | null;
-    eventReference: string | null;
-    staffId: number;
-    staffName: string;
-    serviceId: number | null;
-    serviceName: string | null;
-    baseAmount: number;
-    rateType: CommissionRateType;
-    rateValue: number;
-    commissionAmount: number;
-    status: CommissionEntryStatus;
-    payoutId: number | null;
-    accruedAt: string;
-}
-
-export interface CommissionPayout {
-    id: number;
-    staffId: number;
-    staffName: string;
-    periodStart: string;
-    periodEnd: string;
-    totalAmount: number;
-    status: PayoutStatus;
-    paymentMethod: PaymentMethod | null;
-    paidAt: string | null;
-    notes: string | null;
-}
-
-export interface CommissionPreview {
-    baseAmount: number;
-    rule: {
-        id: number;
-        staffId: number | null;
-        serviceId: number | null;
-        serviceCategory: string | null;
-        rateType: CommissionRateType;
-        rateValue: number;
-        effectiveFrom: string;
-        effectiveTo: string | null;
-        priority: number;
-        isActive: boolean;
-    } | null;
-    commissionAmount: number;
-}
+// --- Finance: daily close ---
 
 export type ClosureStatus = "open" | "closed" | "reopened";
 
@@ -607,7 +535,6 @@ export interface DailyTotals {
     gcashTotal: number;
     cardTotal: number;
     otherTotal: number;
-    commissionTotal: number;
     inventoryCostTotal: number;
 }
 
@@ -639,7 +566,6 @@ export interface SalesReportRow {
     transactions: number;
     gross: number;
     paid: number;
-    commission: number;
 }
 
 export interface WaitTimeMetrics {
@@ -670,26 +596,8 @@ export interface ReconciliationReport {
         serviceName: string | null;
         amount: number;
     }>;
-    missingCommissions: Array<{
-        id: number;
-        reference: string;
-        completedAt: string;
-        staffName: string;
-        subtotal: number;
-        appointmentId: number | null;
-        eventId: number | null;
-    }>;
-    commissionMismatches: Array<{
-        id: number;
-        reference: string;
-        completedAt: string;
-        storedTotal: number;
-        ledgerTotal: number;
-    }>;
     counts: {
         missingTransactions: number;
-        missingCommissions: number;
-        commissionMismatches: number;
     };
 }
 

@@ -20,7 +20,6 @@ import { Select } from "../../components/ui/Select";
 import type {
     SalesGroupBy,
     SalesReportRow,
-    CommissionEntry,
     YearlyReport,
 } from "../../types";
 
@@ -54,7 +53,7 @@ interface MonthPoint {
 export default function ReportsPage() {
     const currentYear = new Date().getFullYear();
     const [selectedTab, setSelectedTab] =
-        useState<"yearly" | "daily" | "commissions">("yearly");
+        useState<"yearly" | "daily">("yearly");
 
     const [year, setYear] = useState(String(currentYear));
     const [report, setReport] = useState<YearlyReport | null>(null);
@@ -68,11 +67,7 @@ export default function ReportsPage() {
     const [dailyTo, setDailyTo] = useState(today);
     const [dailyGroup, setDailyGroup] = useState<SalesGroupBy>("day");
 
-    const [commissionsFrom, setCommissionsFrom] = useState(monthStart);
-    const [commissionsTo, setCommissionsTo] = useState(today);
-
     const [dailyRows, setDailyRows] = useState<SalesReportRow[]>([]);
-    const [commissionsRows, setCommissionsRows] = useState<CommissionEntry[]>([]);
 
     // Keep setters/values referenced by effect dependency lists.
     // Keep setters/values referenced by effect dependency lists.
@@ -80,12 +75,8 @@ export default function ReportsPage() {
     void setDailyFrom;
     void setDailyTo;
     void setDailyGroup;
-    void setCommissionsFrom;
-    void setCommissionsTo;
     void setDailyRows;
-    void setCommissionsRows;
     void dailyRows;
-    void commissionsRows;
 
     const yearOptions = [
         ...new Set([
@@ -155,25 +146,6 @@ export default function ReportsPage() {
             cancelled = true;
         };
     }, [selectedTab, dailyFrom, dailyTo, dailyGroup]);
-
-    useEffect(() => {
-        if (selectedTab !== "commissions") return;
-        let cancelled = false;
-        api
-            .get<{ data: CommissionEntry[] }>("/owner/commissions/entries", {
-                params: { from: commissionsFrom, to: commissionsTo },
-            })
-            .then((res) => {
-                if (!cancelled) setCommissionsRows(res.data.data);
-            })
-            .catch(() => {})
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-        return () => {
-            cancelled = true;
-        };
-    }, [selectedTab, commissionsFrom, commissionsTo]);
 
     return (
         <div className="grid gap-6">

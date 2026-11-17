@@ -6,7 +6,6 @@ import {
     FiCalendar,
     FiCheck,
     FiCheckCircle,
-    FiDollarSign,
     FiPackage,
 } from "react-icons/fi";
 
@@ -43,11 +42,6 @@ function getNotificationIcon(type: InAppNotificationType) {
             return {
                 icon: <FiCalendar size={16} />,
                 badgeClass: "bg-blue-50 text-blue-600 border-blue-200",
-            };
-        case "commission_ready":
-            return {
-                icon: <FiDollarSign size={16} />,
-                badgeClass: "bg-success-bg/80 text-success border-success/30",
             };
         default:
             return {

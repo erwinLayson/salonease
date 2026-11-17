@@ -32,13 +32,10 @@ import ServicesPage from "./pages/owner/ServicesPage";
 import StaffPage from "./pages/owner/StaffPage";
 import TransactionsPage from "./pages/owner/TransactionsPage";
 import ReportsPage from "./pages/owner/ReportsPage";
-import CommissionRulesPage from "./pages/owner/CommissionRulesPage";
-import CommissionPayoutsPage from "./pages/owner/CommissionPayoutsPage";
 import DailyClosePage from "./pages/owner/DailyClosePage";
 import StaffDashboard from "./pages/staff/staffDashboard";
 import StaffTransactionsPage from "./pages/staff/TransactionsPage";
 import MyEventsPage from "./pages/staff/MyEventsPage";
-import MyCommissionsPage from "./pages/staff/MyCommissionsPage";
 
 function App() {
     const [user, setUser] = useState<SessionUser | null>(null);
@@ -138,14 +135,6 @@ function App() {
                                 element={<ReportsPage />}
                             />
                             <Route
-                                path="/owner/commission-rules"
-                                element={<CommissionRulesPage />}
-                            />
-                            <Route
-                                path="/owner/commissions"
-                                element={<CommissionPayoutsPage />}
-                            />
-                            <Route
                                 path="/owner/daily-close"
                                 element={<DailyClosePage />}
                             />
@@ -164,9 +153,6 @@ function App() {
                             <Route path="/staff/appointments" element={<StaffDashboard />} />
                             <Route path="/staff/events" element={<MyEventsPage />} />                            <Route path="/staff/transactions"
                                 element={<StaffTransactionsPage />}
-                            />
-                            <Route path="/staff/commissions"
-                                element={<MyCommissionsPage />}
                             />
                             {/* Staff schedule: calendar + leave requests. */}
                             <Route
