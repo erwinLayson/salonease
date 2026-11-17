@@ -15,7 +15,7 @@ import { BoxIcon, FlaskIcon, ScissorsIcon } from "../../components/ui/icons";
 // Feature components
 import { ServiceForm } from "../../components/owner/ServiceForm";
 import { IconAction } from "../../components/owner/IconAction";
-import { FiEdit2, FiPower, FiTrash2 } from "react-icons/fi";
+import { FiEdit2, FiPackage, FiPower, FiRotateCcw, FiTrash2 } from "react-icons/fi";
 
 // Types
 import type { OwnerService } from "../../types";
@@ -412,25 +412,6 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
         }
     };
 
-    const acknowledgeAlert = async (alert: Alert) => {
-        try {
-            await api.patch(`/owner/inventory/alerts/${alert.id}/acknowledge`);
-            await reload();
-        } catch {
-            // toast via interceptor
-        }
-    };
-
-    const resolveAlert = async (alert: Alert) => {
-        try {
-            await api.patch(`/owner/inventory/alerts/${alert.id}/resolve`);
-            toast.success("Alert resolved.");
-            await reload();
-        } catch {
-            // toast via interceptor
-        }
-    };
-
     // Derived filtering & calculations
     const filteredServices = useMemo(() => {
         const term = serviceSearch.trim().toLowerCase();
@@ -768,49 +749,6 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
             {/* TAB 2: SUPPLIES & STOCK */}
             {activeTab === "supplies" && (
                 <div className="grid gap-6">
-                    {/* Alerts banner */}
-                    {alerts.length > 0 && (
-                        <Card title={`Low-stock alerts (${alerts.length})`}>
-                            <ul className="space-y-2">
-                                {alerts.map((alert) => (
-                                    <li
-                                        key={alert.id}
-                                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning-line bg-warning-bg/30 p-3"
-                                    >
-                                        <div>
-                                            <p className="text-sm font-medium">
-                                                {alert.alertType === "out_of_stock"
-                                                    ? "Out of stock"
-                                                    : "Low stock"}
-                                                : {alert.supplyName}
-                                            </p>
-                                            <p className="text-xs text-muted">
-                                                {alert.currentQuantity} left · reorder at{" "}
-                                                {alert.reorderLevel}
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => void acknowledgeAlert(alert)}
-                                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-charcoal hover:bg-charcoal/5"
-                                            >
-                                                Acknowledge
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => void resolveAlert(alert)}
-                                                className="rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-medium text-charcoal hover:bg-charcoal/5"
-                                            >
-                                                Resolve
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </Card>
-                    )}
-
                     {/* Stock KPI strip */}
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                         <Card>
@@ -951,10 +889,13 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                                                         ? "—"
                                                         : peso(supply.unitCost)}
                                                 </td>
-                                                <td className="px-3 py-3 text-right">
-                                                    <div className="flex flex-wrap justify-end gap-1.5">
-                                                        <button
-                                                            type="button"
+                                                <td className="whitespace-nowrap px-3 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        <IconAction
+                                                            size="sm"
+                                                            label="Stock movement"
+                                                            icon={<FiPackage size={15} />}
+                                                            disabled={busy}
                                                             onClick={() => {
                                                                 setAdjustingSupply(supply);
                                                                 setMovementForm({
@@ -967,24 +908,21 @@ export default function ServicesPage({ defaultTab = "services" }: ServicesPagePr
                                                                     notes: "",
                                                                 });
                                                             }}
-                                                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-charcoal hover:bg-charcoal/5"
-                                                        >
-                                                            Stock
-                                                        </button>
-                                                        <button
-                                                            type="button"
+                                                        />
+                                                        <IconAction
+                                                            size="sm"
+                                                            label="Edit supply"
+                                                            icon={<FiEdit2 size={15} />}
+                                                            disabled={busy}
                                                             onClick={() => openEditSupply(supply)}
-                                                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-charcoal hover:bg-charcoal/5"
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            type="button"
+                                                        />
+                                                        <IconAction
+                                                            size="sm"
+                                                            label="Movement history"
+                                                            icon={<FiRotateCcw size={15} />}
+                                                            disabled={busy}
                                                             onClick={() => void openMovements(supply)}
-                                                            className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-charcoal hover:bg-charcoal/5"
-                                                        >
-                                                            History
-                                                        </button>
+                                                        />
                                                     </div>
                                                 </td>
                                             </tr>
