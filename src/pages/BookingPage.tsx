@@ -20,7 +20,13 @@ import { BackButton } from "../components/ui/BackButton";
 import { Row } from "../components/ui/Row";
 
 // Utilities
-import { dateInDays, formatScheduleLabel, peso } from "../lib/utils";
+import {
+    dateInDays,
+    formatClock12,
+    formatDateTime,
+    formatScheduleLabel,
+    peso,
+} from "../lib/utils";
 
 type Step = "service" | "staff" | "slot" | "details" | "done";
 
@@ -438,7 +444,10 @@ export default function BookingPage() {
                                             <Row label="Staff" value={selectedStaffName} />
                                         )}
                                         {slot !== null && (
-                                            <Row label="When" value={`${date} at ${slot}`} />
+                                            <Row
+                                                label="When"
+                                                value={`${date} at ${formatClock12(slot)}`}
+                                            />
                                         )}
                                         <Row label="Price" value={peso(service.price)} />
                                     </dl>
@@ -754,15 +763,15 @@ export default function BookingPage() {
                                                             setSlot(time);
                                                             setSlotError(false);
                                                         }}
-                                                        aria-pressed={slot === time}
-                                                        className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                                            slot === time
-                                                                ? "border-primary-dark bg-primary-dark font-medium text-white"
-                                                                : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
-                                                        }`}
-                                                    >
-                                                        {time}
-                                                    </button>
+                                                            aria-pressed={slot === time}
+                                                            className={`min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                                                slot === time
+                                                                    ? "border-primary-dark bg-primary-dark font-medium text-white"
+                                                                    : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
+                                                            }`}
+                                                        >
+                                                            {formatClock12(time)}
+                                                        </button>
                                                 ))}
                                         </div>
                                         {staffSlots.filter((time) => alternatives.includes(time)).length === 0 && (
@@ -798,7 +807,7 @@ export default function BookingPage() {
                                                     : "border-border bg-surface hover:border-primary hover:bg-primary-light/30"
                                             }`}
                                         >
-                                            {time}
+                                            {formatClock12(time)}
                                         </button>
                                     ))}
                                 </div>
@@ -839,7 +848,7 @@ export default function BookingPage() {
                         {step === "details" && service && (
                             <section>
                                 <div className="mb-5 rounded-lg border border-primary-light/60 bg-primary-light/30 px-4 py-3 text-sm text-charcoal">
-                                    {service.name} · {date} at {slot} ·{" "}
+                                    {service.name} · {date} at {formatClock12(slot!)} ·{" "}
                                     {selectedStaffName}
                                 </div>
 
@@ -942,9 +951,7 @@ export default function BookingPage() {
                                     <Row label="Staff" value={confirmation.data.staffName} />
                                     <Row
                                         label="When"
-                                        value={new Date(
-                                            confirmation.data.startAt
-                                        ).toLocaleString()}
+                                        value={formatDateTime(confirmation.data.startAt)}
                                     />
                                     <Row
                                         label="Name"
