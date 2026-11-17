@@ -18,11 +18,11 @@ interface KindVisualConfig {
 const KIND_CONFIG: Record<ToastKind, KindVisualConfig> = {
     success: {
         defaultTitle: "Success",
-        labelColor: "text-emerald-700",
-        iconBadge: "bg-emerald-50 text-emerald-600 border border-emerald-200/70",
-        accentBar: "bg-emerald-500",
-        progressBar: "bg-emerald-500",
-        borderHighlight: "hover:border-emerald-200/80",
+        labelColor: "text-success",
+        iconBadge: "bg-success-bg text-success border border-success-line",
+        accentBar: "bg-success",
+        progressBar: "bg-success",
+        borderHighlight: "hover:border-success-line",
         icon: (
             <svg
                 className="h-4.5 w-4.5"
@@ -40,11 +40,11 @@ const KIND_CONFIG: Record<ToastKind, KindVisualConfig> = {
     },
     error: {
         defaultTitle: "Error",
-        labelColor: "text-rose-700",
-        iconBadge: "bg-rose-50 text-rose-600 border border-rose-200/70",
-        accentBar: "bg-rose-500",
-        progressBar: "bg-rose-500",
-        borderHighlight: "hover:border-rose-200/80",
+        labelColor: "text-danger",
+        iconBadge: "bg-danger-bg text-danger border border-danger-line",
+        accentBar: "bg-danger",
+        progressBar: "bg-danger",
+        borderHighlight: "hover:border-danger-line",
         icon: (
             <svg
                 className="h-4.5 w-4.5"
@@ -64,11 +64,11 @@ const KIND_CONFIG: Record<ToastKind, KindVisualConfig> = {
     },
     warning: {
         defaultTitle: "Warning",
-        labelColor: "text-amber-800",
-        iconBadge: "bg-amber-50 text-amber-600 border border-amber-200/70",
-        accentBar: "bg-amber-500",
-        progressBar: "bg-amber-500",
-        borderHighlight: "hover:border-amber-200/80",
+        labelColor: "text-warning",
+        iconBadge: "bg-warning-bg text-warning border border-warning-line",
+        accentBar: "bg-warning",
+        progressBar: "bg-warning",
+        borderHighlight: "hover:border-warning-line",
         icon: (
             <svg
                 className="h-4.5 w-4.5"
@@ -89,7 +89,7 @@ const KIND_CONFIG: Record<ToastKind, KindVisualConfig> = {
     info: {
         defaultTitle: "Notice",
         labelColor: "text-primary-dark",
-        iconBadge: "bg-rose-50/70 text-primary-dark border border-primary-light/50",
+        iconBadge: "bg-primary-light/40 text-primary-dark border border-primary-light",
         accentBar: "bg-primary-dark",
         progressBar: "bg-primary-dark",
         borderHighlight: "hover:border-primary-light/60",

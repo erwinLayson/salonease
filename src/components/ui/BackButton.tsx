@@ -3,7 +3,7 @@ export function BackButton(props: { onClick: () => void }) {
         <button
             type="button"
             onClick={props.onClick}
-            className="rounded-lg border border-border min-h-11 px-4 py-2 text-sm transition hover:bg-charcoal/5"
+            className="min-h-11 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-charcoal transition hover:border-gold hover:bg-gold-soft/40"
         >
             ← Back
         </button>

@@ -5,7 +5,7 @@ export function ErrorBanner(props: { message: string | null }) {
     return (
         <div
             role="alert"
-            className="mb-4 flex items-start gap-2.5 rounded-xl border border-danger-line bg-danger-bg px-4 py-3 text-sm text-danger"
+            className="mb-4 flex items-start gap-2.5 rounded-xl border border-danger-line bg-danger-bg px-4 py-3 text-sm font-medium text-danger"
         >
             <span
                 aria-hidden

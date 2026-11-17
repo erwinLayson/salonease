@@ -1,21 +1,18 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "gold";
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
     primary:
-        "bg-primary-dark text-white shadow-sm hover:bg-primary-press active:bg-primary-press",
+        "bg-primary text-white shadow-card hover:bg-primary-dark active:bg-primary-press",
     secondary:
-        "border border-border bg-surface text-charcoal hover:bg-charcoal/5 active:bg-charcoal/10",
-    ghost: "text-charcoal hover:bg-charcoal/5 active:bg-charcoal/10",
+        "border border-border-strong bg-surface text-charcoal hover:border-gold hover:bg-gold-soft/40 active:bg-gold-soft",
+    ghost: "text-charcoal hover:bg-gold-soft/50 active:bg-gold-soft",
     danger:
         "border border-danger-line bg-surface text-danger hover:bg-danger-bg active:bg-danger-line/60",
+    gold: "bg-gold text-ink shadow-card hover:bg-gold-light active:bg-gold",
 };
 
-/**
- * Shared button with the full state set: default / hover / active / focus
- * (global :focus-visible ring) / disabled / loading via `aria-busy`.
- */
 export function Button({
     variant = "primary",
     loading = false,
@@ -25,7 +22,6 @@ export function Button({
     ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
-    /** Shows the loading state and blocks duplicate submissions. */
     loading?: boolean;
     children: ReactNode;
 }) {
@@ -33,7 +29,7 @@ export function Button({
         <button
             disabled={disabled || loading}
             aria-busy={loading || undefined}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${VARIANT_CLASSES[variant]} ${className ?? ""}`}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2 text-sm font-medium tracking-wide transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${VARIANT_CLASSES[variant]} ${className ?? ""}`}
             {...rest}
         >
             {loading && (

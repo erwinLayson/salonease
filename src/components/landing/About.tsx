@@ -15,7 +15,6 @@ const VALUES = [
     },
 ];
 
-/** Landing page "About us" section. */
 export function About() {
     return (
         <Section id="about">
@@ -25,8 +24,11 @@ export function About() {
                 subtitle="Professional hair, make-up and beauty care — with online booking that fits your schedule."
             />
 
-            <div className="grid gap-10 lg:grid-cols-2">
-                <div className="space-y-4 text-sm leading-relaxed opacity-80">
+            <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+                <div className="space-y-5 text-sm leading-[1.9] text-muted">
+                    <p className="font-display text-3xl leading-snug text-charcoal">
+                        Great results start with <span className="italic text-primary">listening.</span>
+                    </p>
                     <p>
                         Raheem Make Up Studio and Salon is a full-service beauty studio offering
                         haircuts, styling, colouring, make-up, facials, manicures and pedicures.
@@ -34,45 +36,48 @@ export function About() {
                         tailored to you.
                     </p>
                     <p>
-                        We believe great results start with listening. Tell us the look you're
-                        after, and our team will guide you through the options — no pressure, no
-                        surprises on the bill.
+                        Tell us the look you're after, and our team will guide you through the
+                        options — no pressure, no surprises on the bill.
                     </p>
                     <p>
                         Booking is completely online and account-free. Choose your service,
                         choose your stylist (or let us match you with the first available), and
-                        pick a time. We'll confirm everything instantly, and you can manage or
-                        cancel through a private link any time.
+                        pick a time. You can manage or cancel through a private link any time.
                     </p>
 
-                    <div className="rounded-xl border border-border bg-surface p-5 shadow-sm">
-                        <h3 className="text-sm font-semibold">Opening hours</h3>
-                        <dl className="mt-2 space-y-1 text-sm opacity-70">
-                            <div className="flex justify-between">
+                    <div className="rounded-card border border-border bg-surface p-6 shadow-card">
+                        <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-gold-deep">
+                            <span aria-hidden className="h-px w-5 bg-gold" />
+                            Opening hours
+                        </h3>
+                        <dl className="mt-4 space-y-2.5 text-sm text-muted">
+                            <div className="flex justify-between border-b border-dashed border-border pb-2">
                                 <dt>Monday – Saturday</dt>
-                                <dd>9:00 AM – 6:00 PM</dd>
+                                <dd className="font-semibold text-charcoal">9:00 AM – 6:00 PM</dd>
                             </div>
                             <div className="flex justify-between">
                                 <dt>Sunday</dt>
-                                <dd>Closed</dd>
+                                <dd className="font-semibold text-charcoal">Closed</dd>
                             </div>
                         </dl>
                     </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-1">
-                    {VALUES.map((value) => (
+                <div className="grid gap-4">
+                    {VALUES.map((value, index) => (
                         <div
                             key={value.title}
-                            className="rounded-xl border border-border bg-surface p-5 shadow-sm transition hover:border-primary hover:bg-primary-light/30"
+                            className="group rounded-card border border-border bg-surface p-6 shadow-card transition-all hover:-translate-y-1 hover:border-gold/60 hover:shadow-lift"
                         >
-                            <div className="flex items-start gap-3">
-                                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-dark text-sm font-semibold text-white">
-                                    ✓
+                            <div className="flex items-start gap-4">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold-soft/50 font-display text-lg font-semibold text-primary">
+                                    0{index + 1}
                                 </span>
                                 <div>
-                                    <h3 className="text-sm font-semibold">{value.title}</h3>
-                                    <p className="mt-1 text-sm opacity-70">{value.body}</p>
+                                    <h3 className="text-xl text-charcoal">{value.title}</h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                                        {value.body}
+                                    </p>
                                 </div>
                             </div>
                         </div>

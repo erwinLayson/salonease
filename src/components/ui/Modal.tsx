@@ -88,7 +88,7 @@ export function Modal(props: {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div
                 aria-hidden
-                className="absolute inset-0 bg-charcoal/50"
+                className="absolute inset-0 bg-ink/65 backdrop-blur-sm"
                 onClick={onClose}
             />
             <div
@@ -100,11 +100,12 @@ export function Modal(props: {
                 onKeyDown={trapFocus}
                 className={`relative flex max-h-[calc(100svh-2rem)] w-full flex-col ${
                     props.extraWide ? "max-w-4xl" : props.wide ? "max-w-2xl" : "max-w-lg"
-                } overflow-hidden rounded-2xl border border-border bg-surface shadow-lift`}
+                } overflow-hidden rounded-card border border-border bg-surface shadow-lift`}
             >
                 {/* Fixed Header */}
-                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3.5">
-                    <h2 className="text-base font-semibold tracking-tight text-charcoal">
+                <div className="relative flex shrink-0 items-center justify-between gap-3 border-b border-border bg-gold-soft/30 px-5 py-4">
+                    <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-gold to-transparent" />
+                    <h2 className="text-xl text-charcoal">
                         {props.title}
                     </h2>
                     <button

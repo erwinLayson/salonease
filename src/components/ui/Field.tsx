@@ -16,7 +16,7 @@ export function Field(props: {
 
     return (
         <label className="block text-sm" htmlFor={id}>
-            <span className="mb-1.5 block font-medium text-charcoal">
+            <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
                 {props.label}
             </span>
             <input
@@ -28,10 +28,10 @@ export function Field(props: {
                 aria-invalid={props.error ? true : undefined}
                 aria-describedby={props.error ? errorId : undefined}
                 onChange={(event) => props.onChange(event.target.value)}
-                className={`w-full min-h-11 rounded-lg border bg-surface px-3 py-2 text-sm outline-none transition placeholder:text-muted focus:ring-2 ${
+                className={`w-full min-h-11 rounded-lg border bg-surface px-3.5 py-2 text-sm text-charcoal outline-none transition placeholder:text-muted/70 focus:ring-2 ${
                     props.error
-                        ? "border-danger focus:border-danger focus:ring-danger/30"
-                        : "border-border focus:border-primary focus:ring-primary/40"
+                        ? "border-danger focus:border-danger focus:ring-danger/25"
+                        : "border-border hover:border-border-strong focus:border-gold focus:ring-gold/30"
                 }`}
             />
             {props.error && (

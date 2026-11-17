@@ -90,7 +90,7 @@ export default function AdminLayout(props: {
     };
 
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen bg-background">
             {props.user && (
                 <>
                     <AdminHeader
@@ -101,7 +101,7 @@ export default function AdminLayout(props: {
                     />
 
                     {/* Desktop sidebar */}
-                    <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
+                    <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 lg:block">
                         <Sidebar
                             user={props.user}
                             path={location.pathname}
@@ -121,13 +121,13 @@ export default function AdminLayout(props: {
                         onKeyDown={onDrawerKeyDown}
                     >
                         <div
-                            className={`absolute inset-0 bg-charcoal/50 transition-opacity ${navOpen ? "opacity-100" : "opacity-0"}`}
+                            className={`absolute inset-0 bg-ink/65 backdrop-blur-sm transition-opacity ${navOpen ? "opacity-100" : "opacity-0"}`}
                             onClick={() => setNavOpen(false)}
                         />
                         <aside
                             ref={drawerRef}
                             tabIndex={navOpen ? -1 : undefined}
-                            className={`absolute inset-y-0 left-0 w-64 transform transition-transform duration-200 ${navOpen ? "translate-x-0" : "-translate-x-full"}`}
+                            className={`absolute inset-y-0 left-0 w-72 transform shadow-lift transition-transform duration-200 ${navOpen ? "translate-x-0" : "-translate-x-full"}`}
                         >
                             <Sidebar
                                 user={props.user}
@@ -140,8 +140,8 @@ export default function AdminLayout(props: {
                 </>
             )}
 
-            <main className="lg:pl-64">
-                <div className="mx-auto max-w-6xl px-4 py-8">
+            <main className="dashboard-shell lg:pl-72">
+                <div className="mx-auto max-w-7xl px-5 py-10 sm:px-8">
                     <Outlet />
                 </div>
             </main>

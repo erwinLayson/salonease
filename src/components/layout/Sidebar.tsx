@@ -12,11 +12,6 @@ const ROLE_LABELS: Record<SessionUser["role"], string> = {
     staff: "Staff",
 };
 
-/**
- * Reusable dashboard sidebar: brand, role navigation and the signed-in
- * user card. Renders full-height — the layout decides how it is placed
- * (fixed panel on desktop, slide-over drawer on mobile).
- */
 export function Sidebar(props: {
     user: SessionUser;
     path: string;
@@ -34,20 +29,25 @@ export function Sidebar(props: {
 
     return (
         <div className="flex h-full min-h-0 flex-col border-r border-border bg-surface">
-            <header className="shrink-0 border-b border-border px-5 py-4">
-                <div className="flex items-center gap-2.5">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full">
+            <header className="relative shrink-0 border-b border-border bg-gold-soft/30 px-5 py-5">
+                <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-gold to-transparent" />
+                <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface ring-1 ring-gold/60">
                         <img src={logo} alt="" className="h-full w-full object-cover" />
                     </span>
-                    <span className="text-sm font-semibold tracking-tight">
-                        Raheem Make Up Studio{" "}
-                        <span className="hidden xl:inline">and Salon</span>
+                    <span className="flex flex-col leading-tight">
+                        <span className="font-display text-lg font-semibold text-charcoal">
+                            Raheem
+                        </span>
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.24em] text-gold-deep">
+                            Make Up Studio
+                        </span>
                     </span>
                 </div>
             </header>
 
-            <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
-                <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            <div className="no-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4">
+                <p className="px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-gold-deep">
                     Menu
                 </p>
                 <ul className="space-y-1">
@@ -59,11 +59,16 @@ export function Sidebar(props: {
                                 aria-current={isActive(item.href) ? "page" : undefined}
                                 className={
                                     isActive(item.href)
-                                        ? "flex min-h-11 w-full items-center gap-3 rounded-lg bg-primary-dark px-3 py-2 text-sm font-medium text-white shadow-sm"
-                                        : "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-charcoal/5 hover:text-charcoal"
+                                        ? "relative flex min-h-11 w-full items-center gap-3 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white shadow-card"
+                                        : "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted transition-colors hover:bg-gold-soft/50 hover:text-charcoal"
                                 }
                             >
-                                {item.icon}
+                                {isActive(item.href) && (
+                                    <span aria-hidden className="absolute -left-3 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r bg-gold" />
+                                )}
+                                <span className={isActive(item.href) ? "text-gold-light" : ""}>
+                                    {item.icon}
+                                </span>
                                 {item.label}
                             </button>
                         </li>
@@ -71,16 +76,16 @@ export function Sidebar(props: {
                 </ul>
             </div>
 
-            <footer className="shrink-0 border-t border-border p-4">
+            <footer className="shrink-0 border-t border-border bg-gold-soft/20 p-4">
                 <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light text-sm font-semibold text-charcoal">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white ring-2 ring-gold/40">
                         {props.user.username.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
+                        <p className="truncate text-sm font-semibold text-charcoal">
                             {props.user.username}
                         </p>
-                        <p className="text-xs text-muted">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-deep">
                             {ROLE_LABELS[props.user.role]}
                         </p>
                     </div>
@@ -90,7 +95,7 @@ export function Sidebar(props: {
                         onClick={props.onLogout}
                         aria-label="Sign out"
                         title="Sign out"
-                        className="grid min-h-11 min-w-11 place-items-center rounded-md p-2 text-muted transition-colors hover:bg-charcoal/5 hover:text-charcoal"
+                        className="grid min-h-11 min-w-11 place-items-center rounded-lg p-2 text-muted transition-colors hover:bg-primary/10 hover:text-primary"
                     >
                         <LogoutIcon />
                     </button>

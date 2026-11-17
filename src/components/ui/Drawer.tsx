@@ -80,7 +80,7 @@ export function Drawer(props: {
         <div className="fixed inset-0 z-50 flex justify-end">
             <div
                 aria-hidden
-                className="absolute inset-0 bg-charcoal/50"
+                className="absolute inset-0 bg-ink/65 backdrop-blur-sm"
                 onClick={onClose}
             />
             <div
@@ -93,7 +93,7 @@ export function Drawer(props: {
                 className="relative flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-border bg-surface p-5 shadow-lift"
             >
                 <div className="mb-4 flex items-center justify-between gap-3 border-b border-border pb-3">
-                    <h2 className="text-base font-semibold tracking-tight text-charcoal">
+                    <h2 className="text-xl text-charcoal">
                         {props.title}
                     </h2>
                     <button

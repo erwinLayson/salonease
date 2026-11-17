@@ -12,11 +12,6 @@ const initials = (name: string): string =>
         .slice(0, 2)
         .toUpperCase();
 
-/**
- * One team profile card. The marquee renders it twice; the second
- * copy is `duplicate` — hidden from screen readers and keyboard
- * focus so the loop doesn't repeat the content for assistive tech.
- */
 function TeamCard(props: {
     member: TeamMember;
     photo: string | null;
@@ -24,50 +19,48 @@ function TeamCard(props: {
 }) {
     const { member } = props;
     return (
-        <article className="flex w-[85vw] shrink-0 flex-col rounded-xl border border-border bg-surface p-6 shadow-sm sm:w-96 motion-reduce:w-full motion-reduce:shrink sm:motion-reduce:w-1/2">
+        <article className="flex w-[85vw] shrink-0 flex-col rounded-card border border-border bg-surface p-6 shadow-card sm:w-96 motion-reduce:w-full motion-reduce:shrink sm:motion-reduce:w-1/2">
             <div className="flex items-center gap-4">
                 {props.photo ? (
                     <img
                         src={props.photo}
                         alt={`Profile photo of ${member.name}`}
-                        className="h-14 w-14 shrink-0 rounded-full object-cover"
+                        className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-gold/40"
                     />
                 ) : (
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary-dark text-lg font-semibold text-white">
+                    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary font-display text-xl font-semibold text-white ring-2 ring-gold/40">
                         {initials(member.name)}
                     </span>
                 )}
                 <div>
-                    <h3 className="text-lg font-semibold tracking-tight">
-                        {member.name}
-                    </h3>
-                    <p className="text-sm text-primary-dark">
+                    <h3 className="text-2xl leading-tight text-charcoal">{member.name}</h3>
+                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-gold-deep">
                         {member.position}
                     </p>
                 </div>
             </div>
 
-            <p className="mt-4 text-sm leading-relaxed opacity-70">{member.bio}</p>
+            <p className="mt-5 text-sm leading-relaxed text-muted">{member.bio}</p>
 
-            <ul className="mt-4 flex flex-wrap gap-2">
+            <ul className="mt-5 flex flex-wrap gap-2">
                 {member.specialties.map((specialty) => (
                     <li
                         key={specialty}
-                        className="rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-charcoal"
+                        className="rounded-full border border-gold/30 bg-gold-soft/50 px-3 py-1 text-[11px] font-medium text-charcoal"
                     >
                         {specialty}
                     </li>
                 ))}
             </ul>
 
-            <div className="mt-auto flex items-center justify-between border-t border-border pt-4">
-                <span className="text-xs opacity-70">
+            <div className="mt-auto flex items-center justify-between border-t border-border pt-5">
+                <span className="text-xs text-muted">
                     {member.yearsExperience} years experience
                 </span>
                 <a
                     href="/book"
                     tabIndex={props.duplicate ? -1 : undefined}
-                    className="inline-flex min-h-11 items-center rounded-md bg-primary-dark px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-press"
+                    className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-dark"
                 >
                     Book with {member.name.split(" ")[0]}
                 </a>
@@ -76,17 +69,7 @@ function TeamCard(props: {
     );
 }
 
-/**
- * Landing page "Meet the team" section: an infinite marquee.
- *
- * The track holds two copies of the same list and glides left by
- * exactly one copy width (translateX(-50%)), so the loop has no
- * visible reset. Reduced-motion users get the original static grid
- * instead (copy two hidden, cards wrap at full/half width).
- */
 export function Staff() {
-    // Real roster avatars from the API, matched onto the curated
-    // profiles below (which keep the bios the API doesn't store).
     const [team, setTeam] = useState<PublicTeamMember[]>([]);
 
     useEffect(() => {
@@ -98,15 +81,12 @@ export function Staff() {
             .then((response) => {
                 if (!cancelled) setTeam(response.data.data);
             })
-            .catch(() => {
-                // Avatars are progressive enhancement — cards keep initials.
-            });
+            .catch(() => {});
         return () => {
             cancelled = true;
         };
     }, []);
 
-    /** Staff id first, full name as a fallback when ids shift. */
     const photoFor = (member: TeamMember): string | null =>
         team.find((m) => m.id === member.id)?.profilePhoto ??
         team.find((m) => m.name.toLowerCase() === member.name.toLowerCase())
@@ -121,7 +101,6 @@ export function Staff() {
                 subtitle="Experienced stylists and artists who treat every appointment like it's their own look."
             />
 
-            {/* Viewport clips the moving row so the page never scrolls sideways. */}
             <div className="overflow-hidden">
                 <div className="team-marquee flex w-max motion-reduce:w-full">
                     {[false, true].map((duplicate) => (

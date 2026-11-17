@@ -177,8 +177,9 @@ export default function StaffDashboard() {
     return (
         <div className="grid gap-6">
             <header>
-                <h1 className="text-xl font-semibold tracking-tight">My appointments</h1>
-                <p className="mt-1 text-sm text-muted">
+                <p className="eyebrow">My workspace</p>
+                <h1>My appointments</h1>
+                <p className="mt-3 text-sm text-muted">
                     Browse the calendar to see your schedule for each day.
                 </p>
             </header>

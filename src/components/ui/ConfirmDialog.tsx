@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "./Button";
 import { Modal } from "./Modal";
 
 /**
@@ -28,29 +29,23 @@ export function ConfirmDialog(props: {
             onClose={props.onCancel}
             footer={
                 <div className="flex justify-end gap-3">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         disabled={props.busy}
                         onClick={props.onCancel}
-                        className="min-h-11 rounded-lg border border-border px-4 py-2 text-sm text-charcoal transition-colors hover:bg-charcoal/5 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                         {props.cancelLabel ?? "Cancel"}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant={tone === "danger" ? "danger" : "primary"}
                         disabled={props.busy}
-                        aria-busy={props.busy ?? false}
+                        loading={props.busy}
                         onClick={props.onConfirm}
-                        className={`min-h-11 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                            tone === "danger"
-                                ? "bg-danger hover:bg-danger/90"
-                                : "bg-primary-dark hover:bg-primary-press"
-                        }`}
                     >
                         {props.busy && props.busyLabel
                             ? props.busyLabel
                             : props.confirmLabel}
-                    </button>
+                    </Button>
                 </div>
             }
         >

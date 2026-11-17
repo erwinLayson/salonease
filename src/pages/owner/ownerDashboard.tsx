@@ -140,15 +140,16 @@ export default function OwnerDashboard() {
         <div className="grid gap-6">
             <header className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                    <h1 className="text-xl font-semibold tracking-tight">Appointments</h1>
-                    <p className="mt-1 text-sm text-muted">
+                    <p className="eyebrow">Front desk</p>
+                    <h1>Appointments</h1>
+                    <p className="mt-3 text-sm text-muted">
                         Filter, confirm and manage your bookings.
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={() => setShowNew(true)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-primary-dark min-h-11 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-primary-press focus-visible:outline-2 focus-visible:outline-primary-dark"
+                    className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium tracking-wide text-white shadow-card transition-colors hover:bg-primary-dark"
                 >
                     <svg
                         className="h-4 w-4"

@@ -5,7 +5,7 @@ export function Notice(props: { message: string | null }) {
     return (
         <div
             role="status"
-            className="mb-4 flex items-start gap-2.5 rounded-xl border border-success-line bg-success-bg px-4 py-3 text-sm text-success"
+            className="mb-4 flex items-start gap-2.5 rounded-xl border border-success-line bg-success-bg px-4 py-3 text-sm font-medium text-success"
         >
             <span
                 aria-hidden

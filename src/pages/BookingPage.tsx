@@ -368,7 +368,8 @@ export default function BookingPage() {
     return (
         <div className="flex min-h-svh w-full flex-col bg-background lg:h-svh lg:overflow-hidden">
             {/* Slim page bar — the site Navbar/Footer are intentionally omitted here. */}
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2 sm:px-6">
+            <div className="relative flex items-center justify-between gap-3 border-b border-border bg-surface/95 px-5 py-3 backdrop-blur sm:px-8">
+                <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary via-gold to-transparent" />
                 <a
                     href="/"
                     className="flex min-h-11 items-center gap-2.5 rounded-lg pr-2 transition-opacity hover:opacity-80"
@@ -376,14 +377,16 @@ export default function BookingPage() {
                     <div className="relative max-w-16 max-h-16 overflow-hidden">
                         <img src={company_logo} alt="Company-logo" />
                     </div>
-                    <span className="text-sm font-semibold tracking-tight">
-                        Raheem Make Up Studio{" "}
-                        <span className="hidden sm:inline">and Salon</span>
+                    <span className="font-display text-lg font-semibold leading-tight text-charcoal">
+                        Raheem Make Up Studio
+                        <span className="block text-[9px] font-semibold uppercase tracking-[0.24em] text-gold-deep">
+                            and Salon
+                        </span>
                     </span>
                 </a>
                 <a
                     href="/manage"
-                    className="inline-flex min-h-11 items-center px-2 text-sm text-muted transition-colors hover:text-primary-dark"
+                    className="inline-flex min-h-11 items-center px-2 text-xs font-semibold uppercase tracking-wider text-muted transition-colors hover:text-primary"
                 >
                     Manage a booking
                 </a>
@@ -393,19 +396,21 @@ export default function BookingPage() {
                 {/* Sidebar: page heading + live booking summary */}
                 <aside className="contents lg:flex lg:w-80 lg:shrink-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-border lg:bg-surface lg:px-6 lg:py-10 xl:w-96">
                     <div className="border-b border-border bg-surface px-4 py-6 sm:px-6 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
-                        <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">
+                        <p className="eyebrow">Online booking</p>
+                        <h1 className="mt-3 text-4xl leading-tight sm:text-5xl">
                             Book your appointment
                         </h1>
-                        <p className="mt-2 text-sm text-muted">
+                        <p className="mt-3 text-sm leading-relaxed text-muted">
                             No account needed — pick a service, your stylist, and a time
                             that works for you.
                         </p>
                     </div>
 
                     <div className="sticky top-0 z-20 border-b border-border bg-background px-4 py-3 sm:px-6 lg:static lg:mt-5 lg:border-b-0 lg:bg-transparent lg:px-0 lg:py-0">
-                        <section className="rounded-2xl border border-border bg-surface p-3 shadow-card sm:p-4 lg:p-5">
-                            <div className="mb-2 flex items-center justify-between gap-3 border-b border-border pb-2 lg:mb-4 lg:pb-3">
-                                <h2 className="text-sm font-semibold tracking-tight lg:text-base">
+                        <section className="relative overflow-hidden rounded-card border border-border bg-surface p-4 shadow-card sm:p-5">
+                            <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-gold to-transparent" />
+                            <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-3 lg:mb-4">
+                                <h2 className="text-xl text-charcoal">
                                     Your booking
                                 </h2>
                             </div>
@@ -465,8 +470,8 @@ export default function BookingPage() {
                                             aria-hidden
                                             className={`mx-2 h-px flex-1 ${
                                                 index <= stepIndex
-                                                    ? "bg-primary-dark/50"
-                                                    : "bg-charcoal/10"
+                                                    ? "bg-gold/70"
+                                                    : "bg-border"
                                             }`}
                                         />
                                     )}
@@ -474,10 +479,10 @@ export default function BookingPage() {
                                         <span
                                             className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-semibold transition-colors ${
                                                 index < stepIndex
-                                                    ? "bg-primary-dark text-white"
+                                                    ? "bg-gold text-ink"
                                                     : index === stepIndex
-                                                      ? "bg-primary-dark text-white ring-4 ring-primary/40"
-                                                      : "bg-charcoal/5 text-muted"
+                                                      ? "bg-primary text-white ring-4 ring-gold/30"
+                                                      : "bg-gold-soft/60 text-muted"
                                             }`}
                                         >
                                             {index < stepIndex ? "✓" : index + 1}
