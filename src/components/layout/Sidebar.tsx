@@ -1,7 +1,7 @@
 import { roleNavItems, type SidebarItem } from "../../constant/nav";
 import type { SessionUser } from "../../types";
 import { LogoutIcon } from "../ui/icons";
-import logo from "../../../public/company-logo.png";
+import logo from "../../../public/web-logo.png";
 import { NotificationBell } from "./NotificationBell";
 
 const cleanPath = (href: string): string =>
